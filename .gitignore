@@ -1,0 +1,49 @@
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.cache/
+.mypy_cache/
+.pytest_cache/
+.venv/
+venv/
+
+# Node / JS
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Build / Dist / Coverage
+dist/
+build/
+coverage/
+
+# Logs / Temp
+*.log
+logs/
+tmp/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Terraform
+infrastructure/.terraform/
+infrastructure/.terraform.lock.hcl
+infrastructure/terraform.tfstate
+infrastructure/terraform.tfstate.*
+
+# AWS local config (should not be committed)
+.aws/
+
+# Real config files (use config.example.yaml instead)
+config/config.yaml
+config/config.*.yaml
+
+

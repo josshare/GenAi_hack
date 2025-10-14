@@ -1,0 +1,51 @@
+# Core dependencies
+boto3>=1.34.0
+botocore>=1.34.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# AWS SDK dependencies
+aws-lambda-powertools>=2.30.0
+aws-xray-sdk>=2.12.0
+
+# LLM and AI dependencies
+langchain>=0.1.0
+langchain-community>=0.0.10
+anthropic>=0.8.0
+
+# Data processing and analysis
+pandas>=2.1.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+
+# Monitoring and observability
+prometheus-client>=0.19.0
+structlog>=23.2.0
+
+# API and web framework
+fastapi>=0.104.0
+uvicorn>=0.24.0
+pydantic>=2.5.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.12.0
+moto>=4.2.0
+
+# Development tools
+black>=23.11.0
+flake8>=6.1.0
+mypy>=1.7.0
+pre-commit>=3.5.0
+
+# ChatOps integration
+slack-sdk>=3.23.0
+python-telegram-bot>=20.7
+
+# Utilities
+pyyaml>=6.0.1
+python-dotenv>=1.0.0
+tenacity>=8.2.3
+python-dateutil>=2.8.2
+

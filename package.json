@@ -1,0 +1,39 @@
+{
+  "name": "intelligent-automation-agent",
+  "version": "1.0.0",
+  "description": "Intelligent Automation AI Agent for DevOps and Cloud Management",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "node scripts/deploy.js",
+    "test": "pytest",
+    "lint": "flake8 src/ tests/",
+    "format": "black src/ tests/",
+    "type-check": "mypy src/",
+    "infra:plan": "cd infrastructure && terraform plan",
+    "infra:apply": "cd infrastructure && terraform apply",
+    "infra:destroy": "cd infrastructure && terraform destroy"
+  },
+  "keywords": [
+    "aws",
+    "devops",
+    "ai",
+    "automation",
+    "bedrock",
+    "lambda",
+    "cloudwatch"
+  ],
+  "author": "DevOps AI Team",
+  "license": "MIT",
+  "devDependencies": {
+    "aws-cdk": "^2.100.0",
+    "typescript": "^5.3.0",
+    "@types/node": "^20.10.0"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1500.0",
+    "commander": "^11.1.0",
+    "chalk": "^4.1.2",
+    "ora": "^5.4.1"
+  }
+}
+
