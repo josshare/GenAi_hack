@@ -1,0 +1,123 @@
+name: Developer CI
+
+on:
+  push:
+    branches: [ "developer" ]
+  pull_request:
+    branches: [ "developer" ]
+
+concurrency:
+  group: developer-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Validate and Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Python setup and checks
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint (flake8)
+        run: |
+          pip install flake8
+          flake8 src/ tests/
+
+      - name: Format check (black)
+        run: |
+          pip install black
+          black --check src/ tests/
+
+      - name: Type check (mypy)
+        run: |
+          pip install mypy
+          mypy src/
+
+      - name: Run tests (pytest)
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          pip install pytest
+          pytest -q
+
+      # Node setup (for scripts and tooling)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Type check (optional)
+        shell: bash
+        run: |
+          if npm run -s | grep -q "type-check"; then
+            npm run -s type-check
+          else
+            echo "No type-check script defined; skipping."
+          fi
+
+      # Terraform validation (no cloud access required)
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform fmt
+        working-directory: infrastructure
+        run: terraform fmt -check -diff
+
+      - name: Terraform init (no backend)
+        working-directory: infrastructure
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        working-directory: infrastructure
+        run: terraform validate
+
+      # Optional: config validation if script + example exist
+      - name: Validate config (optional)
+        if: ${{ hashFiles('scripts/validate-config.py') != '' && hashFiles('config/config.example.yaml') != '' }}
+        run: |
+          python scripts/validate-config.py --config config/config.example.yaml
+
+      # Webhook notification (runs regardless of previous result)
+      - name: Notify webhook
+        if: ${{ always() && secrets.WEBHOOK_URL != '' }}
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+        shell: bash
+        run: |
+          status="${{ job.status }}"
+          data=$(cat <<'JSON'
+{"event":"developer_ci","repository":"${{ github.repository }}","branch":"${{ github.ref_name }}","commit":"${{ github.sha }}","status":"STATUS_PLACEHOLDER","workflow":"${{ github.workflow }}","run_id":"${{ github.run_id }}","run_url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}
+JSON
+)
+          data=${data/STATUS_PLACEHOLDER/$status}
+          curl -sS -X POST -H "Content-Type: application/json" -d "$data" "$WEBHOOK_URL" || true
+

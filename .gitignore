@@ -47,3 +47,47 @@ config/config.yaml
 config/config.*.yaml
 
 
+# Additional environment files and secrets
+.env.development
+.env.production
+.env.staging
+.env.test
+.envrc
+*.env
+!env.example
+!.env.example
+
+# Secrets and certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.cer
+
+# Direnv
+.direnv/
+
+# Windows artifacts
+Thumbs.db
+
+# Python extras
+.coverage
+coverage.xml
+.tox/
+
+# Terraform (generic)
+**/.terraform/
+*.tfstate
+*.tfstate.*
+
+# Node package managers config (may contain tokens)
+.npmrc
+.yarnrc
+.pnpm-store/
+
+# PID files
+*.pid
+*.pid.lock
+
+# Project-specific private docs
+WARP.md
