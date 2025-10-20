@@ -17,7 +17,9 @@ class AWSConfig(BaseSettings):
 
 class BedrockConfig(BaseSettings):
     """Bedrock-specific configuration."""
-    model_id: str = Field(default="anthropic.claude-3-sonnet-20240229-v1:0")
+    model_id: str = Field(
+        default="anthropic.claude-3-sonnet-20240229-v1:0"
+    )
     temperature: float = Field(default=0.1, ge=0.0, le=1.0)
     max_tokens: int = Field(default=4000, ge=1, le=8000)
     timeout: int = Field(default=300, ge=1)
@@ -26,7 +28,9 @@ class BedrockConfig(BaseSettings):
 class AgentConfig(BaseSettings):
     """Agent-specific configuration."""
     name: str = Field(default="DevOpsAutomationAgent")
-    description: str = Field(default="Autonomous AI agent for DevOps and cloud management")
+    description: str = Field(
+        default="Autonomous AI agent for DevOps and cloud management"
+    )
     max_iterations: int = Field(default=10, ge=1, le=100)
     confidence_threshold: float = Field(default=0.8, ge=0.0, le=1.0)
     escalation_threshold: float = Field(default=0.6, ge=0.0, le=1.0)
@@ -38,7 +42,7 @@ class CloudWatchConfig(BaseSettings):
     log_retention_days: int = Field(default=30, ge=1, le=3653)
     alarm_sns_topic: str = Field(default="devops-ai-alerts")
     metrics: list[str] = Field(default_factory=lambda: [
-        "CPUUtilization", "MemoryUtilization", "RequestCount", 
+        "CPUUtilization", "MemoryUtilization", "RequestCount",
         "ErrorRate", "ResponseTime"
     ])
 
@@ -77,7 +81,7 @@ class ChatOpsConfig(BaseSettings):
     slack_channels: list[str] = Field(default_factory=lambda: [
         "devops-alerts", "incident-response"
     ])
-    
+
     teams_enabled: bool = Field(default=False)
     teams_webhook_url: Optional[str] = Field(default=None)
 
@@ -147,19 +151,29 @@ class FeaturesConfig(BaseSettings):
 
 class AppConfig(BaseSettings):
     """Main application configuration."""
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
-    
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8"
+    )
+
     aws: AWSConfig = Field(default_factory=AWSConfig)
     bedrock: BedrockConfig = Field(default_factory=BedrockConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
-    cloudwatch: CloudWatchConfig = Field(default_factory=CloudWatchConfig)
+    cloudwatch: CloudWatchConfig = Field(
+        default_factory=CloudWatchConfig
+    )
     dynamodb: DynamoDBConfig = Field(default_factory=DynamoDBConfig)
     lambda_: LambdaConfig = Field(default_factory=LambdaConfig)
     s3: S3Config = Field(default_factory=S3Config)
     chatops: ChatOpsConfig = Field(default_factory=ChatOpsConfig)
-    thresholds: ThresholdsConfig = Field(default_factory=ThresholdsConfig)
-    autoscaling: AutoscalingConfig = Field(default_factory=AutoscalingConfig)
-    remediation: RemediationConfig = Field(default_factory=RemediationConfig)
+    thresholds: ThresholdsConfig = Field(
+        default_factory=ThresholdsConfig
+    )
+    autoscaling: AutoscalingConfig = Field(
+        default_factory=AutoscalingConfig
+    )
+    remediation: RemediationConfig = Field(
+        default_factory=RemediationConfig
+    )
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     features: FeaturesConfig = Field(default_factory=FeaturesConfig)
@@ -168,45 +182,54 @@ class AppConfig(BaseSettings):
     def from_yaml(cls, config_path: str) -> "AppConfig":
         """Load configuration from YAML file."""
         config_file = Path(config_path)
-        
+
         if not config_file.exists():
-            raise FileNotFoundError(f"Configuration file not found: {config_path}")
-        
+            raise FileNotFoundError(
+                f"Configuration file not found: {config_path}"
+            )
+
         with open(config_file, 'r') as f:
             config_data = yaml.safe_load(f)
-        
+
         # Convert nested dict to config objects
         return cls(**cls._flatten_config(config_data))
-    
+
     @staticmethod
-    def _flatten_config(config_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _flatten_config(
+            config_data: Dict[str, Any]) -> Dict[str, Any]:
         """Flatten nested configuration dictionary."""
         flattened = {}
-        
+
         for key, value in config_data.items():
             if isinstance(value, dict):
                 flattened[key] = value
             else:
                 flattened[key] = value
-        
+
         return flattened
-    
+
     def validate_config(self) -> None:
         """Validate configuration values."""
         # Validate AWS account ID format
-        if not self.aws.account_id.isdigit() or len(self.aws.account_id) != 12:
+        if (not self.aws.account_id.isdigit() or
+                len(self.aws.account_id) != 12):
             raise ValueError("AWS account ID must be 12 digits")
-        
+
         # Validate Bedrock model ID format
-        if not self.bedrock.model_id.startswith(("anthropic.", "amazon.", "ai21.")):
+        if not self.bedrock.model_id.startswith(
+                ("anthropic.", "amazon.", "ai21.")):
             raise ValueError("Invalid Bedrock model ID format")
-        
+
         # Validate thresholds
         if self.thresholds.cpu_high >= 100:
-            raise ValueError("CPU high threshold must be less than 100%")
-        
+            raise ValueError(
+                "CPU high threshold must be less than 100%"
+            )
+
         if self.thresholds.memory_high >= 100:
-            raise ValueError("Memory high threshold must be less than 100%")
+            raise ValueError(
+                "Memory high threshold must be less than 100%"
+            )
 
 
 # Global configuration instance
@@ -216,12 +239,12 @@ _config: Optional[AppConfig] = None
 def get_config() -> AppConfig:
     """Get the global configuration instance."""
     global _config
-    
+
     if _config is None:
         config_path = os.getenv("CONFIG_PATH", "config/config.yaml")
         _config = AppConfig.from_yaml(config_path)
         _config.validate_config()
-    
+
     return _config
 
 
@@ -234,12 +257,11 @@ def set_config(config: AppConfig) -> None:
 def reload_config(config_path: Optional[str] = None) -> AppConfig:
     """Reload configuration from file."""
     global _config
-    
+
     if config_path is None:
         config_path = os.getenv("CONFIG_PATH", "config/config.yaml")
-    
+
     _config = AppConfig.from_yaml(config_path)
     _config.validate_config()
-    
-    return _config
 
+    return _config

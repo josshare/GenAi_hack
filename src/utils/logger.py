@@ -3,7 +3,6 @@
 import json
 import logging
 import sys
-import uuid
 from datetime import datetime
 from typing import Any, Dict, Optional
 import structlog
@@ -15,7 +14,7 @@ from .config import get_config
 
 class CustomJSONFormatter(logging.Formatter):
     """Custom JSON formatter for structured logging."""
-    
+
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON."""
         log_entry = {
@@ -27,34 +26,34 @@ class CustomJSONFormatter(logging.Formatter):
             "function": record.funcName,
             "line": record.lineno,
         }
-        
+
         # Add request ID if available
         if hasattr(record, 'request_id'):
             log_entry["request_id"] = record.request_id
-        
+
         # Add trace ID if available
         if hasattr(record, 'trace_id'):
             log_entry["trace_id"] = record.trace_id
-        
+
         # Add any extra fields
         if hasattr(record, 'extra_fields'):
             log_entry.update(record.extra_fields)
-        
+
         # Add exception info if present
         if record.exc_info:
             log_entry["exception"] = self.formatException(record.exc_info)
-        
+
         return json.dumps(log_entry)
 
 
 class DevOpsAILogger:
     """Main logger class for the DevOps AI Agent."""
-    
+
     def __init__(self, name: str = "devops-ai-agent"):
         self.name = name
         self.config = get_config()
         self._setup_logging()
-    
+
     def _setup_logging(self) -> None:
         """Set up logging configuration."""
         # Configure structlog
@@ -75,38 +74,41 @@ class DevOpsAILogger:
             wrapper_class=structlog.stdlib.BoundLogger,
             cache_logger_on_first_use=True,
         )
-        
+
         # Create logger
         self.logger = structlog.get_logger(self.name)
-        
+
         # Set up handlers based on configuration
         for destination in self.config.logging.destinations:
             if destination == "cloudwatch":
                 self._setup_cloudwatch_handler()
             elif destination == "s3":
                 self._setup_s3_handler()
-    
+
     def _setup_cloudwatch_handler(self) -> None:
         """Set up CloudWatch logging handler."""
         try:
-            from aws_lambda_powertools.logging.logger import set_package_logger
+            from aws_lambda_powertools.logging.logger import (
+                set_package_logger
+            )
             set_package_logger(self.logger)
         except ImportError:
-            # Fallback to standard logging if AWS Lambda Powertools not available
+            # Fallback to standard logging if AWS Lambda Powertools
+            # not available
             handler = logging.StreamHandler(sys.stdout)
             handler.setFormatter(CustomJSONFormatter())
             self.logger.addHandler(handler)
-    
+
     def _setup_s3_handler(self) -> None:
         """Set up S3 logging handler."""
         # This would be implemented for S3 log storage
         # For now, we'll use CloudWatch as the primary destination
         pass
-    
+
     def get_logger(self) -> structlog.BoundLogger:
         """Get the configured logger instance."""
         return self.logger
-    
+
     def with_context(self, **kwargs) -> structlog.BoundLogger:
         """Create a logger with additional context."""
         return self.logger.bind(**kwargs)
@@ -114,7 +116,7 @@ class DevOpsAILogger:
 
 class LambdaLogger:
     """AWS Lambda specific logger using Lambda Powertools."""
-    
+
     def __init__(self, service_name: str = "devops-ai-agent"):
         self.logger = Logger(service=service_name)
         self.config = get_config()
@@ -161,7 +163,7 @@ class LambdaLogger:
 
 class AgentLogger:
     """Specialized logger for AI agent operations."""
-    
+
     def __init__(self, agent_name: str):
         self.agent_name = agent_name
         self.base_logger = DevOpsAILogger(f"agent-{agent_name}")
@@ -190,8 +192,8 @@ class AgentLogger:
             details=details
         )
 
-    def log_incident(self, incident_id: str, severity: str, description: str,
-                     metrics: Dict[str, Any]) -> None:
+    def log_incident(self, incident_id: str, severity: str,
+                     description: str, metrics: Dict[str, Any]) -> None:
         """Log incident detection and handling."""
         self.logger.warning(
             "Incident detected",
