@@ -108,11 +108,15 @@ jobs:
 
       # Webhook notification (runs regardless of previous result)
       - name: Notify webhook
-        if: ${{ always() && secrets.WEBHOOK_URL != '' }}
+        if: ${{ always() }}
         env:
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
         shell: bash
         run: |
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "No WEBHOOK_URL secret; skipping."
+            exit 0
+          fi
           status="${{ job.status }}"
           data=$(cat <<'JSON'
           {"event":"developer_ci","repository":"${{ github.repository }}","branch":"${{ github.ref_name }}","commit":"${{ github.sha }}","status":"STATUS_PLACEHOLDER","workflow":"${{ github.workflow }}","run_id":"${{ github.run_id }}","run_url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}
