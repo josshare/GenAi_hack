@@ -67,7 +67,7 @@ class CloudWatchMonitor:
     def put_metric(self, metric_data: MetricData) -> bool:
         """Put a custom metric to CloudWatch."""
         try:
-            response = self.cloudwatch.put_metric_data(
+            _ = self.cloudwatch.put_metric_data(
                 Namespace=metric_data.namespace,
                 MetricData=[
                     {
@@ -109,7 +109,7 @@ class CloudWatchMonitor:
     ) -> List[Dict[str, Any]]:
         """Get metric statistics from CloudWatch."""
         try:
-            response = self.cloudwatch.get_metric_statistics(
+            _ = self.cloudwatch.get_metric_statistics(
                 Namespace=namespace,
                 MetricName=metric_name,
                 Dimensions=[
@@ -132,7 +132,7 @@ class CloudWatchMonitor:
     def create_alarm(self, alarm_config: AlarmConfig) -> bool:
         """Create a CloudWatch alarm."""
         try:
-            response = self.cloudwatch.put_metric_alarm(
+            _ = self.cloudwatch.put_metric_alarm(
                 AlarmName=alarm_config.alarm_name,
                 AlarmDescription=alarm_config.alarm_description,
                 MetricName=alarm_config.metric_name,
@@ -208,7 +208,7 @@ class CloudWatchMonitor:
     def get_current_alarm_state(self, alarm_name: str) -> Optional[str]:
         """Get current alarm state."""
         try:
-            response = self.cloudwatch.describe_alarms(AlarmNames=[alarm_name])
+            _ = self.cloudwatch.describe_alarms(AlarmNames=[alarm_name])
             alarms = response.get('MetricAlarms', [])
 
             if alarms:

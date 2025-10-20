@@ -103,7 +103,7 @@ class ActionExecutor:
                 "action_type": action.action_type.value,
                 "duration": duration,
                 "error": str(e),
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
     @tracer.capture_method
@@ -130,7 +130,7 @@ class ActionExecutor:
 
         try:
             # Force new deployment
-            response = ecs_client.update_service(
+            _ = ecs_client.update_service(
                 cluster=cluster_name,
                 service=service_name,
                 forceNewDeployment=True
@@ -155,7 +155,7 @@ class ActionExecutor:
 
         try:
             # Reboot the instance
-            response = ec2_client.reboot_instances(
+            _ = ec2_client.reboot_instances(
                 InstanceIds=[instance_id]
             )
 
@@ -226,7 +226,7 @@ class ActionExecutor:
             target_capacity = action.parameters.get("current_capacity", 2) + 1
 
         try:
-            response = autoscaling_client.set_desired_capacity(
+            _ = autoscaling_client.set_desired_capacity(
                 AutoScalingGroupName=asg_name,
                 DesiredCapacity=target_capacity,
                 HonorCooldown=False
@@ -256,7 +256,7 @@ class ActionExecutor:
             target_capacity = action.parameters.get("current_capacity", 2) + 1
 
         try:
-            response = ecs_client.update_service(
+            _ = ecs_client.update_service(
                 cluster=cluster_name,
                 service=service_name,
                 desiredCount=target_capacity
@@ -312,7 +312,7 @@ class ActionExecutor:
 
         if not previous_version:
             # Get previous task definition
-            response = ecs_client.describe_services(
+            _ = ecs_client.describe_services(
                 cluster=cluster_name,
                 services=[service_name]
             )
@@ -338,7 +338,7 @@ class ActionExecutor:
                 raise ValueError("No previous version found for rollback")
 
         try:
-            response = ecs_client.update_service(
+            _ = ecs_client.update_service(
                 cluster=cluster_name,
                 service=service_name,
                 taskDefinition=previous_version,
@@ -378,7 +378,7 @@ class ActionExecutor:
                 raise ValueError("No previous version found for rollback")
 
         try:
-            response = lambda_client.update_alias(
+            _ = lambda_client.update_alias(
                 FunctionName=function_name,
                 Name='LIVE',
                 FunctionVersion=previous_version
@@ -415,7 +415,7 @@ class ActionExecutor:
         try:
             # For Redis, we would use the redis-py client to flush
             # For Memcached, we would use boto3 to restart the cluster
-            response = elasticache_client.reboot_cache_cluster(
+            _ = elasticache_client.reboot_cache_cluster(
                 CacheClusterId=cache_cluster_id,
                 CacheNodeIdsToReboot=['0001']
             )
@@ -439,12 +439,12 @@ class ActionExecutor:
         try:
             cloudfront_client = boto3.client('cloudfront')
 
-            response = cloudfront_client.create_invalidation(
+            _ = cloudfront_client.create_invalidation(
                 DistributionId=distribution_id,
                 InvalidationBatch={
                     'Paths': {
                         'Quantity': len(paths),
-                        'Items': paths
+                            'Items': paths
                     },
                     'CallerReference': f"devops-ai-{int(time.time())}"
                 }
@@ -480,7 +480,7 @@ class ActionExecutor:
         Any]:
         """Restart an RDS instance."""
         try:
-            response = rds_client.reboot_db_instance(
+            _ = rds_client.reboot_db_instance(
                 DBInstanceIdentifier=db_identifier,
                 ForceFailover=False
             )

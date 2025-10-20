@@ -71,7 +71,7 @@ class IncidentProcessor:
                 "incident_id": incident.id,
                 "alarm_name": alarm_name,
                 "action_taken": result.get("action_taken"),
-                "result": result
+                    "result": result
             }
 
         except Exception as e:
@@ -79,7 +79,7 @@ class IncidentProcessor:
             return {
                 "success": False,
                 "error": str(e),
-                "alarm_data": alarm_data
+                    "alarm_data": alarm_data
             }
 
     def process_custom_event(self,
@@ -110,7 +110,7 @@ class IncidentProcessor:
                 "incident_id": incident.id,
                 "event_type": event_type,
                 "action_taken": result.get("action_taken"),
-                "result": result
+                    "result": result
             }
 
         except Exception as e:
@@ -118,7 +118,7 @@ class IncidentProcessor:
             return {
                 "success": False,
                 "error": str(e),
-                "event_data": event_data
+                    "event_data": event_data
             }
 
     def _create_incident_from_alarm(self,
@@ -142,10 +142,10 @@ class IncidentProcessor:
             "alarm_name": alarm_name,
             "alarm_state": alarm_state,
             "state_change_time": alarm_data.get('StateChangeTime'),
-            "reason": alarm_data.get('NewStateReason', ''),
-            "threshold": alarm_data.get('Threshold', 0),
-            "metric_name": alarm_data.get('MetricName', ''),
-            "namespace": alarm_data.get('Namespace', '')
+                "reason": alarm_data.get('NewStateReason', ''),
+                "threshold": alarm_data.get('Threshold', 0),
+                "metric_name": alarm_data.get('MetricName', ''),
+                "namespace": alarm_data.get('Namespace', '')
         }
 
         return Incident(
@@ -178,7 +178,7 @@ class IncidentProcessor:
         metrics = event_data.get('metrics', {
             "event_type": event_type,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "source": "custom_event"
+                "source": "custom_event"
         })
 
         return Incident(
@@ -227,14 +227,14 @@ class IncidentProcessor:
                 Item={
                     'incident_id': incident.id,
                     'timestamp': incident.timestamp.isoformat(),
-                    'severity': incident.severity.value,
+                        'severity': incident.severity.value,
                     'description': incident.description,
                     'service': incident.service,
                     'metrics': incident.metrics,
                     'status': incident.status,
                     'actions_taken': incident.actions_taken,
                     'resolved_at': incident.resolved_at.isoformat() if incident.resolved_at else None,
-                    'ttl': int((datetime.now(timezone.utc).timestamp() + 86400 * 30))  # 30 days TTL
+                        'ttl': int((datetime.now(timezone.utc).timestamp() + 86400 * 30))  # 30 days TTL
                 }
             )
 
@@ -267,7 +267,7 @@ class IncidentProcessor:
                 metrics={
                     "incident_processed": 1.0,
                     "action_taken": 1.0 if result.get("action_taken") else 0.0,
-                    "escalated": 1.0 if result.get("action_taken") == "escalate" else 0.0
+                        "escalated": 1.0 if result.get("action_taken") == "escalate" else 0.0
                 }
             )
 
@@ -283,7 +283,7 @@ class IncidentProcessor:
                 "result": {
                     "success": False,
                     "error": str(e),
-                    "escalation_reason": "Agent processing failed"
+                        "escalation_reason": "Agent processing failed"
                 }
             }
 
@@ -297,16 +297,16 @@ class IncidentProcessor:
 
             action_item = {
                 'action_id': f"action-{incident.id}-{int(time.time())}",
-                'incident_id': incident.id,
+                    'incident_id': incident.id,
                 'action_type': result.get("action_taken"),
-                'target': incident.service,
+                    'target': incident.service,
                 'parameters': action_data.get("parameters", {}),
-                'status': "pending",
+                    'status': "pending",
                 'confidence': result.get("analysis",
                     {}).get("confidence",
                     0.0),
                 'created_at': datetime.now(timezone.utc).isoformat(),
-                'ttl': int((datetime.now(timezone.utc).timestamp() + 86400 * 30))  # 30 days TTL
+                    'ttl': int((datetime.now(timezone.utc).timestamp() + 86400 * 30))  # 30 days TTL
             }
 
             self.actions_table.put_item(Item=action_item)
@@ -333,9 +333,10 @@ class IncidentProcessor:
             # Update incident
             self.incidents_table.update_item(
                 Key={'incident_id': incident.id},
-                UpdateExpression='SET #status = :status,
-                    #actions_taken = list_append(#actions_taken,
-                    :action)',
+                UpdateExpression=(
+                    'SET #status = :status, '
+                    '#actions_taken = list_append(#actions_taken, :action)'
+                ),
                 ExpressionAttributeNames={
                     '#status': 'status',
                     '#actions_taken': 'actions_taken'
@@ -360,13 +361,13 @@ class IncidentProcessor:
             end_time = datetime.now(timezone.utc)
             start_time = end_time - timedelta(hours=hours_back)
 
-            response = self.incidents_table.scan(
+            _ = self.incidents_table.scan(
                 FilterExpression='service = :service AND #timestamp BETWEEN :start_time AND :end_time',
                 ExpressionAttributeNames={'#timestamp': 'timestamp'},
                 ExpressionAttributeValues={
                     ':service': service,
                     ':start_time': start_time.isoformat(),
-                    ':end_time': end_time.isoformat()
+                        ':end_time': end_time.isoformat()
                 }
             )
 
@@ -393,7 +394,7 @@ class IncidentProcessor:
                 ExpressionAttributeValues={
                     ':status': 'resolved',
                     ':resolved_at': datetime.now(timezone.utc).isoformat(),
-                    ':notes': resolution_notes
+                        ':notes': resolution_notes
                 }
             )
 
