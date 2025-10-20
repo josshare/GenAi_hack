@@ -1,3 +1,8 @@
+# Local generated AWS credentials for GitHub Actions
+scripts/gha-credentials/generated/
+scripts/gha-credentials/*.env
+scripts/gha-credentials/*.json
+
 # OS / Editor
 .DS_Store
 .idea/

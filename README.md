@@ -39,12 +39,12 @@ An autonomous AI agent that monitors, detects, diagnoses, and responds to incide
 1. **Prerequisites**:
    - AWS CLI configured with appropriate permissions
    - Python 3.9+
-   - Node.js 18+ (for deployment scripts)
-   - Terraform (for infrastructure)
+   - Node.js 18+
+   - uv (Python package/dependency manager)
 
 2. **Installation**:
    ```bash
-   pip install -r requirements.txt
+   uv pip install -r requirements.txt
    npm install
    ```
 
@@ -55,9 +55,9 @@ An autonomous AI agent that monitors, detects, diagnoses, and responds to incide
    ```
 
 4. **Deployment**:
-   ```bash
-   ./scripts/deploy.sh
-   ```
+   Deployment now happens via GitHub Actions with CloudFormation. Push to the default branch or trigger the workflow manually.
+   - Application packaging uses uv
+   - Infrastructure managed by CloudFormation templates in `infrastructure/`
 
 ## Use Cases
 
@@ -95,6 +95,9 @@ An autonomous AI agent that monitors, detects, diagnoses, and responds to incide
 3. Make your changes
 4. Add tests
 5. Submit a pull request
+
+## Diagram 
+![Architecture Diagram](Diagram.png)
 
 ## License
 

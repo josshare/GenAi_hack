@@ -22,10 +22,9 @@ Make sure you have the following tools installed on your system:
 ```bash
 # Check if required tools are installed
 python3 --version  # Python 3.9 or higher
-pip3 --version
+uv --version       # Python package manager
 node --version     # Node.js 18 or higher  
 npm --version
-terraform --version  # Terraform 1.5 or higher
 aws --version      # AWS CLI v2
 ```
 
@@ -56,11 +55,9 @@ For a rapid deployment, follow these steps:
 # Clone the repository and navigate to it
 cd /path/to/GenAi_hack
 
-# Make deployment script executable
-chmod +x deploy.fish
-
-# Initialize the project (first time only)
-./deploy.fish init
+# Install dependencies (first time only)
+uv pip install -r requirements.txt
+npm install
 ```
 
 ### 2. Configure Settings
@@ -73,13 +70,7 @@ vim .env                 # Environment variables
 
 ### 3. Deploy Infrastructure and Application
 
-```bash
-# Deploy everything (infrastructure + application)
-./deploy.fish deploy
-
-# Or deploy to a specific environment
-./deploy.fish deploy --env prod --region us-west-2
-```
+Deployment is now performed via GitHub Actions using CloudFormation. Push to the default branch or run the workflow manually. The workflow deploys the stack (`infrastructure/stack.yaml`) and then packages and updates the Lambda functions using uv.
 
 ### 4. Verify Deployment
 
@@ -118,56 +109,21 @@ vim .env                 # Environment variables
 
 ### Step 2: Infrastructure Deployment
 
-The deployment uses Terraform to create AWS resources:
-
-```bash
-# Plan infrastructure changes
-npm run infra:plan
-
-# Apply infrastructure
-npm run infra:apply
-
-# Or use the deployment script
-./deploy.fish deploy --skip-tests  # Skip tests for faster deployment
-```
+Infrastructure is defined in CloudFormation `infrastructure/stack.yaml` and deployed by the GitHub Actions workflow.
 
 ### Step 3: Application Deployment
 
-Deploy Lambda functions and configure monitoring:
+Lambda packaging and updates are handled by the workflow via `scripts/deploy.js` and uv. You can still run it locally if needed:
 
 ```bash
-# Deploy application only (after infrastructure exists)
-./deploy.fish update
-
-# Or deploy with specific options
-./deploy.fish deploy --skip-infra --env staging
+node scripts/deploy.js --environment dev --region us-east-1
 ```
 
 ## Deployment Commands
 
-### Main Deployment Script (`deploy.fish`)
+### Deployment via GitHub Actions
 
-The Fish shell deployment script provides comprehensive deployment management:
-
-```bash
-# Initialize deployment (first time setup)
-./deploy.fish init
-
-# Full deployment (infrastructure + application)
-./deploy.fish deploy [OPTIONS]
-
-# Update application only (for code changes)
-./deploy.fish update [OPTIONS]
-
-# Check deployment status
-./deploy.fish status [OPTIONS]
-
-# Rollback to previous version
-./deploy.fish rollback [OPTIONS]
-
-# Destroy all resources (⚠️ DESTRUCTIVE)
-./deploy.fish destroy [OPTIONS]
-```
+The workflow `.github/workflows/deploy.yml` deploys CloudFormation and updates the functions. Inputs `environment` and `region` are supported for manual runs.
 
 #### Command Options
 
@@ -223,12 +179,7 @@ npm run test
 npm run lint
 npm run type-check
 
-# Infrastructure management
-npm run infra:plan
-npm run infra:apply
-npm run infra:destroy
-
-# Application deployment
+# Application deployment (local)
 npm run deploy
 ```
 
@@ -298,15 +249,7 @@ environments:
 
 ### Regular Updates
 
-For application code updates (without infrastructure changes):
-
-```bash
-# Quick update (recommended for code changes)
-./deploy.fish update
-
-# Update with testing
-./deploy.fish update --env prod
-```
+Push to your repository to trigger the workflow, or run `node scripts/deploy.js` locally for code-only updates.
 
 ### Rolling Updates
 
@@ -372,21 +315,9 @@ export AWS_SECRET_ACCESS_KEY=your_secret
 export AWS_DEFAULT_REGION=us-east-1
 ```
 
-#### 2. Terraform State Lock
+#### 2. CloudFormation Rollback
 
-```bash
-Error: Error acquiring the state lock
-```
-
-**Solution:**
-```bash
-# Force unlock (use carefully)
-cd infrastructure
-terraform force-unlock LOCK_ID
-
-# Or use a different state file
-terraform init -reconfigure
-```
+If the stack rolls back, check Events and fix the underlying error (permissions, parameters, limits) and re-run the workflow.
 
 #### 3. Lambda Deployment Package Too Large
 
@@ -480,30 +411,11 @@ node scripts/deploy.js --environment=prod --dry-run=false --skip-tests
 
 ### Multi-Region Deployment
 
-Deploy to multiple regions:
-
-```bash
-# Deploy to primary region
-./deploy.fish deploy --env prod --region us-east-1
-
-# Deploy to secondary region
-./deploy.fish deploy --env prod --region us-west-2
-```
+Run the workflow with different `region` inputs for each target region.
 
 ### Custom Resource Tags
 
-Add custom tags to all resources by modifying `infrastructure/main.tf`:
-
-```hcl
-locals {
-  common_tags = merge(var.tags, {
-    Environment = var.environment
-    Region      = var.aws_region
-    CostCenter  = "engineering"
-    Owner       = "devops-team"
-  })
-}
-```
+Add custom tags by extending `infrastructure/stack.yaml` resources and their Tags sections.
 
 ### Security Hardening
 

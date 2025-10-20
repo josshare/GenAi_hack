@@ -1,0 +1,84 @@
+name: Deploy AI Agent
+
+on:
+  push:
+    branches: [ main, developer ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment (dev|staging|prod)
+        required: false
+        default: dev
+      region:
+        description: AWS region
+        required: false
+        default: us-east-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      ENVIRONMENT: ${{ inputs.environment || 'dev' }}
+      AWS_REGION: ${{ inputs.region || 'us-east-1' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install deps (npm)
+        run: npm ci
+
+      - name: Validate config
+        run: |
+          python3 scripts/validate-config.py config/config.example.yaml --verbose || true
+
+      - name: Deploy infrastructure (CloudFormation)
+        run: |
+          STACK_NAME="${ENVIRONMENT}-ai-agent"
+          aws cloudformation deploy \
+            --stack-name "$STACK_NAME" \
+            --template-file infrastructure/stack.yaml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides Environment=${ENVIRONMENT} ProjectName=ai-agent
+
+      - name: Export stack outputs
+        run: |
+          STACK_NAME="${ENVIRONMENT}-ai-agent"
+          aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+            --query 'Stacks[0].Outputs' --output json > stack-outputs-raw.json
+          python3 -c "import json,sys; d=json.load(open('stack-outputs-raw.json'));\
+          m={o['OutputKey']:o['OutputValue'] for o in d};\
+          json.dump(m, open('stack-outputs.json','w'));\
+          print('Wrote stack-outputs.json with keys:', ', '.join(m.keys()))"
+
+      - name: Build and deploy Lambda functions
+        env:
+          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
+        run: |
+          node scripts/deploy.js --environment "$ENVIRONMENT" --region "$AWS_REGION"
+
+

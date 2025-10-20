@@ -49,7 +49,7 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 const SRC_DIR = path.join(PROJECT_ROOT, 'src');
 const CONFIG_DIR = path.join(PROJECT_ROOT, 'config');
 const DIST_DIR = path.join(PROJECT_ROOT, 'dist');
-const TERRAFORM_OUTPUTS = path.join(PROJECT_ROOT, 'terraform-outputs.json');
+const STACK_OUTPUTS = path.join(PROJECT_ROOT, 'stack-outputs.json');
 
 // Logging utilities
 const log = {
@@ -143,8 +143,8 @@ function createZipPackage(functionName, sourcePath) {
       executeCommand(`cp -r "${integrationsPath}" "${tempDir}"/integrations`, { stdio: 'ignore' });
     }
     
-    // Install dependencies
-    executeCommand(`pip install -r "${PROJECT_ROOT}/requirements.txt" -t "${tempDir}"`, { stdio: 'ignore' });
+    // Install dependencies using uv (replaces pip)
+    executeCommand(`uv pip install -r "${PROJECT_ROOT}/requirements.txt" -t "${tempDir}"`, { stdio: 'ignore' });
     
     // Create zip file
     executeCommand(`cd "${tempDir}" && zip -r "${zipPath}" . -x "*.pyc" "__pycache__/*" "*.git*"`, { stdio: 'ignore' });
@@ -201,14 +201,17 @@ async function deployLambdaFunction(functionConfig, zipPath) {
     } else {
       // Create new function
       if (!options.dryRun) {
-        // Get execution role ARN from Terraform outputs
+        // Get execution role ARN from stack outputs (CloudFormation) or fallback
         let roleArn = `arn:aws:iam::${await getAccountId()}:role/${options.environment}-ai-agent-lambda-role`;
-        
-        if (fs.existsSync(TERRAFORM_OUTPUTS)) {
-          const terraformOutputs = JSON.parse(fs.readFileSync(TERRAFORM_OUTPUTS, 'utf8'));
-          if (terraformOutputs.lambda_execution_role_arn) {
-            roleArn = terraformOutputs.lambda_execution_role_arn.value;
-          }
+
+        // Prefer CloudFormation stack outputs if available
+        if (fs.existsSync(STACK_OUTPUTS)) {
+          try {
+            const stackOutputs = JSON.parse(fs.readFileSync(STACK_OUTPUTS, 'utf8'));
+            if (stackOutputs.LambdaExecutionRoleArn) {
+              roleArn = stackOutputs.LambdaExecutionRoleArn;
+            }
+          } catch (_) { /* ignore parse errors */ }
         }
         
         await lambda.createFunction({

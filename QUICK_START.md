@@ -10,7 +10,7 @@ This is the fastest way to get your Intelligent Automation AI Agent up and runni
    # Check if you have the tools (install if missing)
    python3 --version  # 3.9+
    node --version     # 18+
-   terraform --version # 1.5+
+   uv --version       # uv package manager
    aws --version      # 2.x
    ```
 
@@ -21,8 +21,9 @@ This is the fastest way to get your Intelligent Automation AI Agent up and runni
 # Make sure you're in the project directory
 cd /path/to/GenAi_hack
 
-# Initialize (first time only)
-./deploy.fish init
+# Install dependencies (first time only)
+uv pip install -r requirements.txt
+npm install
 ```
 
 ### 2. Configure Settings
@@ -36,19 +37,14 @@ vim config/config.yaml  # Set your AWS account_id and region
 vim .env                # Set ENVIRONMENT and AWS_DEFAULT_REGION
 ```
 
-### 3. Deploy Everything
-```bash
-# Deploy infrastructure and application
-./deploy.fish deploy
-
-# Or deploy to a specific environment
-./deploy.fish deploy --env prod --region us-west-2
-```
+### 3. Deploy via GitHub Actions
+Push to your repository's default branch or run the Deploy AI Agent workflow manually.
+Infrastructure is managed with CloudFormation.
 
 ### 4. Verify Deployment
 ```bash
 # Check status
-./deploy.fish status
+aws lambda list-functions --query 'Functions[?starts_with(FunctionName, `dev-ai-agent`)].{Name:FunctionName,Runtime:Runtime,LastModified:LastModified}' --output table
 
 # View logs
 aws logs tail /aws/lambda/dev-ai-agent-incident-processor --follow
@@ -56,66 +52,23 @@ aws logs tail /aws/lambda/dev-ai-agent-incident-processor --follow
 
 ## Update Application (2 minutes)
 
-For code changes (no infrastructure changes needed):
+Push your changes to trigger the GitHub Actions workflow. It will package with uv and update the Lambda functions.
+
+## Common Actions
 
 ```bash
-# Quick update
-./deploy.fish update
-
-# Update specific environment
-./deploy.fish update --env prod
+# Run tests
+pytest tests/ -v
+# Linting and type checking
+flake8 src/ tests/
+mypy src/
 ```
 
-## Common Commands
-
-```bash
-# Initialize (first time only)
-./deploy.fish init
-
-# Deploy everything
-./deploy.fish deploy
-
-# Update application only
-./deploy.fish update
-
-# Check status
-./deploy.fish status
-
-# Rollback if needed
-./deploy.fish rollback
-
-# Destroy resources (careful!)
-./deploy.fish destroy
-```
-
-## Command Options
-
-```bash
-# Options available for all commands
--e, --env ENVIRONMENT    # dev|staging|prod (default: dev)
--r, --region REGION      # AWS region (default: us-east-1)
--p, --profile PROFILE    # AWS profile to use
--d, --dry-run            # Show what would be done
--f, --force              # Skip confirmations
---skip-tests             # Skip running tests
---skip-infra             # Skip infrastructure deployment
-```
+ 
 
 ## Examples
 
-```bash
-# Deploy to production
-./deploy.fish deploy --env prod --profile production
-
-# Dry run to see what would happen
-./deploy.fish deploy --dry-run
-
-# Force update without confirmation (CI/CD)
-./deploy.fish update --force --skip-tests
-
-# Deploy only application, skip infrastructure
-./deploy.fish deploy --skip-infra
-```
+Use the Actions tab to run the Deploy AI Agent workflow with custom inputs (environment, region).
 
 ## Troubleshooting
 
@@ -137,11 +90,7 @@ python3 scripts/validate-config.py config/config.yaml --env .env
 # Lambda, DynamoDB, CloudWatch, IAM, KMS, S3, SNS, Bedrock
 ```
 
-**Terraform Lock:**
-```bash
-cd infrastructure
-terraform force-unlock LOCK_ID
-```
+**CloudFormation Rollback or Failure:** Check stack Events in the AWS console. Fix template/parameters or IAM permissions, then re-run the workflow.
 
 ### Get Help
 
@@ -155,7 +104,7 @@ terraform force-unlock LOCK_ID
 
 ## What Gets Deployed
 
-**Infrastructure (Terraform):**
+**Infrastructure (CloudFormation):**
 - Lambda functions (incident-processor, action-executor)
 - DynamoDB tables (incidents, actions)
 - CloudWatch alarms and log groups
@@ -174,7 +123,7 @@ terraform force-unlock LOCK_ID
 
 - `config/config.yaml` - Main configuration
 - `.env` - Environment variables
-- `infrastructure/main.tf` - Terraform configuration
+- `infrastructure/stack.yaml` - CloudFormation template
 
 ## Next Steps
 

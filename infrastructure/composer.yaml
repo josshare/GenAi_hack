@@ -1,0 +1,377 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Application Composer template for AI Agent (CFN) with Lambdas and wiring
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    Description: Environment name (dev, staging, prod)
+  ProjectName:
+    Type: String
+    Default: ai-agent
+    Description: Project name
+  LogLevel:
+    Type: String
+    Default: INFO
+  CodeS3Bucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment packages
+  CodeS3KeyIncident:
+    Type: String
+    Description: S3 key for incident-processor zip
+  CodeS3KeyAction:
+    Type: String
+    Description: S3 key for action-executor zip
+
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: "${Environment}-${ProjectName}-lambda-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: lambda.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName:
+            Fn::Sub: "${Environment}-${ProjectName}-lambda-policy"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  Fn::Sub: "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${Environment}-${ProjectName}-*"
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - Fn::GetAtt: [IncidentsTable, Arn]
+                  - Fn::GetAtt: [ActionsTable, Arn]
+                  - Fn::Sub: "${IncidentsTable.Arn}/index/*"
+                  - Fn::Sub: "${ActionsTable.Arn}/index/*"
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                  - cloudwatch:GetMetricStatistics
+                  - cloudwatch:ListMetrics
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  Fn::Sub: "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-sonnet-*"
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:StartInstances
+                  - ec2:StopInstances
+                  - ec2:RebootInstances
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecs:DescribeServices
+                  - ecs:UpdateService
+                  - ecs:DescribeTasks
+                  - ecs:StopTask
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - autoscaling:DescribeAutoScalingGroups
+                  - autoscaling:UpdateAutoScalingGroup
+                  - autoscaling:SetDesiredCapacity
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                Resource:
+                  Fn::Sub: "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${Environment}-${ProjectName}-*"
+              - Effect: Allow
+                Action:
+                  - rds:DescribeDBInstances
+                  - rds:RebootDBInstance
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - elasticache:DescribeCacheClusters
+                  - elasticache:RebootCacheCluster
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - cloudfront:GetDistribution
+                  - cloudfront:CreateInvalidation
+                Resource: '*'
+      Tags:
+        - Key: Project
+          Value: AI-Agent
+        - Key: Environment
+          Value:
+            Ref: Environment
+
+  IncidentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName:
+        Fn::Sub: "${Environment}-${ProjectName}-incidents"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: incident_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: incident_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: status-timestamp-index
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: "${Environment}-${ProjectName}-incidents"
+        - Key: Project
+          Value: AI-Agent
+        - Key: Environment
+          Value:
+            Ref: Environment
+
+  ActionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName:
+        Fn::Sub: "${Environment}-${ProjectName}-actions"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: action_id
+          AttributeType: S
+        - AttributeName: incident_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: action_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: incident-timestamp-index
+          KeySchema:
+            - AttributeName: incident_id
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: "${Environment}-${ProjectName}-actions"
+        - Key: Project
+          Value: AI-Agent
+        - Key: Environment
+          Value:
+            Ref: Environment
+
+  AlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName:
+        Fn::Sub: "${Environment}-${ProjectName}-alerts"
+      Tags:
+        - Key: Project
+          Value: AI-Agent
+        - Key: Environment
+          Value:
+            Ref: Environment
+
+  IncidentProcessorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: "${Environment}-${ProjectName}-incident-processor"
+      Runtime: python3.11
+      Handler: incident_processor.lambda_handler
+      Role:
+        Fn::GetAtt: [LambdaExecutionRole, Arn]
+      Timeout: 300
+      MemorySize: 512
+      Code:
+        S3Bucket:
+          Ref: CodeS3Bucket
+        S3Key:
+          Ref: CodeS3KeyIncident
+      Environment:
+        Variables:
+          ENVIRONMENT:
+            Ref: Environment
+          LOG_LEVEL:
+            Ref: LogLevel
+
+  ActionExecutorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: "${Environment}-${ProjectName}-action-executor"
+      Runtime: python3.11
+      Handler: action_executor.lambda_handler
+      Role:
+        Fn::GetAtt: [LambdaExecutionRole, Arn]
+      Timeout: 900
+      MemorySize: 1024
+      Code:
+        S3Bucket:
+          Ref: CodeS3Bucket
+        S3Key:
+          Ref: CodeS3KeyAction
+      Environment:
+        Variables:
+          ENVIRONMENT:
+            Ref: Environment
+          LOG_LEVEL:
+            Ref: LogLevel
+
+  CloudWatchAlarmsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name:
+        Fn::Sub: "${Environment}-${ProjectName}-cloudwatch-alarms"
+      Description: Capture CloudWatch alarm state changes
+      EventPattern:
+        source:
+          - aws.cloudwatch
+        detail-type:
+          - CloudWatch Alarm State Change
+        detail:
+          state:
+            value:
+              - ALARM
+      State: ENABLED
+      Targets:
+        - Arn:
+            Fn::GetAtt: [IncidentProcessorFunction, Arn]
+          Id: IncidentProcessorTarget
+
+  EventsInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt: [IncidentProcessorFunction, Arn]
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt: [CloudWatchAlarmsRule, Arn]
+
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName:
+        Fn::Sub: "${Environment}-${ProjectName}-lambda-errors"
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 2
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 300
+      Statistic: Sum
+      Threshold: 5
+      AlarmDescription: This alarm monitors lambda errors
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            Fn::Sub: "${Environment}-${ProjectName}-incident-processor"
+      AlarmActions:
+        - Fn::GetAtt: [AlertsTopic, TopicArn]
+
+  LambdaDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName:
+        Fn::Sub: "${Environment}-${ProjectName}-lambda-duration"
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 3
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      Period: 300
+      Statistic: Average
+      Threshold: 240000
+      AlarmDescription: This alarm monitors lambda duration
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            Fn::Sub: "${Environment}-${ProjectName}-incident-processor"
+      AlarmActions:
+        - Fn::GetAtt: [AlertsTopic, TopicArn]
+
+  DynamoDBThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName:
+        Fn::Sub: "${Environment}-${ProjectName}-dynamodb-throttles"
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 2
+      MetricName: ReadThrottledEvents
+      Namespace: AWS/DynamoDB
+      Period: 300
+      Statistic: Sum
+      Threshold: 0
+      AlarmDescription: This alarm monitors DynamoDB throttling
+      Dimensions:
+        - Name: TableName
+          Value:
+            Ref: IncidentsTable
+      AlarmActions:
+        - Fn::GetAtt: [AlertsTopic, TopicArn]
+
+Outputs:
+  LambdaExecutionRoleArn:
+    Description: ARN of the Lambda execution role
+    Value:
+      Fn::GetAtt: [LambdaExecutionRole, Arn]
+  IncidentProcessorArn:
+    Description: ARN of incident-processor Lambda
+    Value:
+      Fn::GetAtt: [IncidentProcessorFunction, Arn]
+  ActionExecutorArn:
+    Description: ARN of action-executor Lambda
+    Value:
+      Fn::GetAtt: [ActionExecutorFunction, Arn]
+  IncidentsTableName:
+    Description: Name of the incidents DynamoDB table
+    Value:
+      Ref: IncidentsTable
+  ActionsTableName:
+    Description: Name of the actions DynamoDB table
+    Value:
+      Ref: ActionsTable
+  SnsAlertsTopicArn:
+    Description: ARN of the SNS alerts topic
+    Value:
+      Fn::GetAtt: [AlertsTopic, TopicArn]
+
