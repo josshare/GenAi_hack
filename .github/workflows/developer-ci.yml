@@ -115,9 +115,9 @@ jobs:
         run: |
           status="${{ job.status }}"
           data=$(cat <<'JSON'
-{"event":"developer_ci","repository":"${{ github.repository }}","branch":"${{ github.ref_name }}","commit":"${{ github.sha }}","status":"STATUS_PLACEHOLDER","workflow":"${{ github.workflow }}","run_id":"${{ github.run_id }}","run_url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}
-JSON
-)
+          {"event":"developer_ci","repository":"${{ github.repository }}","branch":"${{ github.ref_name }}","commit":"${{ github.sha }}","status":"STATUS_PLACEHOLDER","workflow":"${{ github.workflow }}","run_id":"${{ github.run_id }}","run_url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}
+          JSON
+          )
           data=${data/STATUS_PLACEHOLDER/$status}
           curl -sS -X POST -H "Content-Type: application/json" -d "$data" "$WEBHOOK_URL" || true
 
