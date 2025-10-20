@@ -164,8 +164,9 @@ class AgentLogger:
         self.agent_name = agent_name
         self.base_logger = DevOpsAILogger(f"agent-{agent_name}")
         self.logger = self.base_logger.get_logger()
-    
-    def log_decision(self, decision: str, confidence: float, context: Dict[str, Any]) -> None:
+
+    def log_decision(self, decision: str, confidence: float, 
+                     context: Dict[str, Any]) -> None:
         """Log agent decision making."""
         self.logger.info(
             "Agent decision made",
@@ -174,8 +175,9 @@ class AgentLogger:
             confidence=confidence,
             context=context
         )
-    
-    def log_action(self, action: str, target: str, status: str, details: Dict[str, Any]) -> None:
+
+    def log_action(self, action: str, target: str, status: str, 
+                   details: Dict[str, Any]) -> None:
         """Log agent action execution."""
         self.logger.info(
             "Agent action executed",
@@ -185,9 +187,9 @@ class AgentLogger:
             status=status,
             details=details
         )
-    
-    def log_incident(self, incident_id: str, severity: str, description: str, 
-                    metrics: Dict[str, Any]) -> None:
+
+    def log_incident(self, incident_id: str, severity: str, description: str,
+                     metrics: Dict[str, Any]) -> None:
         """Log incident detection and handling."""
         self.logger.warning(
             "Incident detected",
@@ -197,8 +199,9 @@ class AgentLogger:
             description=description,
             metrics=metrics
         )
-    
-    def log_escalation(self, incident_id: str, reason: str, target: str) -> None:
+
+    def log_escalation(self, incident_id: str, reason: str, 
+                       target: str) -> None:
         """Log escalation events."""
         self.logger.error(
             "Incident escalated",
@@ -207,7 +210,7 @@ class AgentLogger:
             reason=reason,
             target=target
         )
-    
+
     def log_metrics(self, metrics: Dict[str, Any]) -> None:
         """Log performance metrics."""
         self.logger.info(
@@ -237,4 +240,3 @@ def get_agent_logger(agent_name: str) -> AgentLogger:
 # Global logger instances
 devops_logger = DevOpsAILogger()
 agent_logger = AgentLogger("main")
-
