@@ -118,15 +118,16 @@ class LambdaLogger:
     def __init__(self, service_name: str = "devops-ai-agent"):
         self.logger = Logger(service=service_name)
         self.config = get_config()
-    
+
     def get_logger(self) -> Logger:
         """Get the Lambda Powertools logger."""
         return self.logger
-    
-    def log_event(self, event: Dict[str, Any], context: Optional[LambdaContext] = None) -> None:
+
+    def log_event(self, event: Dict[str, Any],
+                  context: Optional[LambdaContext] = None) -> None:
         """Log Lambda event with context."""
         self.logger.info("Lambda event received", event=event)
-        
+
         if context:
             self.logger.info(
                 "Lambda context",
@@ -135,12 +136,13 @@ class LambdaLogger:
                 memory_limit=context.memory_limit_in_mb,
                 remaining_time=context.get_remaining_time_in_millis()
             )
-    
+
     def log_response(self, response: Dict[str, Any]) -> None:
         """Log Lambda response."""
         self.logger.info("Lambda response", response=response)
-    
-    def log_error(self, error: Exception, context: Optional[LambdaContext] = None) -> None:
+
+    def log_error(self, error: Exception,
+                  context: Optional[LambdaContext] = None) -> None:
         """Log error with context."""
         self.logger.error(
             "Lambda error occurred",
@@ -148,7 +150,7 @@ class LambdaLogger:
             error_type=type(error).__name__,
             exc_info=True
         )
-        
+
         if context:
             self.logger.error(
                 "Lambda context during error",
@@ -165,7 +167,7 @@ class AgentLogger:
         self.base_logger = DevOpsAILogger(f"agent-{agent_name}")
         self.logger = self.base_logger.get_logger()
 
-    def log_decision(self, decision: str, confidence: float, 
+    def log_decision(self, decision: str, confidence: float,
                      context: Dict[str, Any]) -> None:
         """Log agent decision making."""
         self.logger.info(
@@ -176,7 +178,7 @@ class AgentLogger:
             context=context
         )
 
-    def log_action(self, action: str, target: str, status: str, 
+    def log_action(self, action: str, target: str, status: str,
                    details: Dict[str, Any]) -> None:
         """Log agent action execution."""
         self.logger.info(
@@ -200,7 +202,7 @@ class AgentLogger:
             metrics=metrics
         )
 
-    def log_escalation(self, incident_id: str, reason: str, 
+    def log_escalation(self, incident_id: str, reason: str,
                        target: str) -> None:
         """Log escalation events."""
         self.logger.error(
