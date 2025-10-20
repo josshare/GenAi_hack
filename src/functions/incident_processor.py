@@ -2,14 +2,17 @@
 
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 import boto3
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.utilities.typing import LambdaContext
-from aws_lambda_powertools.utilities.data_classes import event_source, EventBridgeEvent
+from aws_lambda_powertools.utilities.data_classes import (
+    event_source,
+    EventBridgeEvent
+)
 
-from ..agents.bedrock_agent import BedrockAgent, Action, ActionType, Incident, Severity
+from ..agents.bedrock_agent import BedrockAgent, Incident, Severity
 from ..integrations.cloudwatch import DevOpsAIMonitor
 from ..utils.config import get_config
 from ..utils.logger import get_lambda_logger

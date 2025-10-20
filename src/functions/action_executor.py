@@ -312,7 +312,7 @@ class ActionExecutor:
 
         if not previous_version:
             # Get previous task definition
-            _ = ecs_client.describe_services(
+            response = ecs_client.describe_services(
                 cluster=cluster_name,
                 services=[service_name]
             )
