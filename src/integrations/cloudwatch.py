@@ -170,9 +170,9 @@ class CloudWatchMonitor:
             self.logger.error(f"Failed to delete alarm: {str(e)}")
             return False
 
-    def list_alarms(self,
-        state_value: Optional[str] = None) -> List[Dict[str,
-        Any]]:
+    def list_alarms(
+        self, state_value: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """List CloudWatch alarms."""
         try:
             params = {}
@@ -186,10 +186,9 @@ class CloudWatchMonitor:
             self.logger.error(f"Failed to list alarms: {str(e)}")
             return []
 
-    def set_alarm_state(self,
-        alarm_name: str,
-        state_value: str,
-        state_reason: str) -> bool:
+    def set_alarm_state(
+        self, alarm_name: str, state_value: str, state_reason: str
+    ) -> bool:
         """Set alarm state."""
         try:
             self.cloudwatch.set_alarm_state(
@@ -208,7 +207,9 @@ class CloudWatchMonitor:
     def get_current_alarm_state(self, alarm_name: str) -> Optional[str]:
         """Get current alarm state."""
         try:
-            _ = self.cloudwatch.describe_alarms(AlarmNames=[alarm_name])
+            response = self.cloudwatch.describe_alarms(
+                AlarmNames=[alarm_name]
+            )
             alarms = response.get('MetricAlarms', [])
 
             if alarms:

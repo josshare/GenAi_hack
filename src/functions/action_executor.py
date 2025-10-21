@@ -103,7 +103,7 @@ class ActionExecutor:
                 "action_type": action.action_type.value,
                 "duration": duration,
                 "error": str(e),
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
     @tracer.capture_method
@@ -137,10 +137,11 @@ class ActionExecutor:
             )
 
             return {
-                "message": f"ECS service {service_name} restart initiated",
+                "message": (
+                    f"ECS service {service_name} restart initiated"
+                ),
                 "cluster": cluster_name,
                 "service": service_name,
-                "task_definition": response['service']['taskDefinition']
             }
 
         except Exception as e:
@@ -181,9 +182,10 @@ class ActionExecutor:
             )
 
             # Update environment variables to force restart
-            current_env = current_config.get('Environment',
-                {}).get('Variables',
-                {})
+            current_env = (
+                current_config.get("Environment", {})
+                .get("Variables", {})
+            )
             current_env['_restart_trigger'] = str(int(time.time()))
 
             lambda_client.update_function_configuration(
@@ -212,10 +214,9 @@ class ActionExecutor:
         else:
             raise ValueError(f"Unsupported scale type: {scale_type}")
 
-    def _scale_autoscaling_group(self,
-        action: Action,
-        target_capacity: int) -> Dict[str,
-        Any]:
+    def _scale_autoscaling_group(
+        self, action: Action, target_capacity: int
+    ) -> Dict[str, Any]:
         """Scale an Auto Scaling Group."""
         asg_name = action.parameters.get("asg_name")
 
@@ -241,10 +242,9 @@ class ActionExecutor:
         except Exception as e:
             raise Exception(f"Failed to scale Auto Scaling Group: {str(e)}")
 
-    def _scale_ecs_service(self,
-        action: Action,
-        target_capacity: int) -> Dict[str,
-        Any]:
+    def _scale_ecs_service(
+        self, action: Action, target_capacity: int
+    ) -> Dict[str, Any]:
         """Scale an ECS service."""
         cluster_name = action.parameters.get("cluster_name")
         service_name = action.parameters.get("service_name")
@@ -299,10 +299,9 @@ class ActionExecutor:
         else:
             raise ValueError(f"Unsupported deployment type: {deployment_type}")
 
-    def _rollback_ecs_deployment(self,
-        action: Action,
-        previous_version: str) -> Dict[str,
-        Any]:
+    def _rollback_ecs_deployment(
+        self, action: Action, previous_version: str
+    ) -> Dict[str, Any]:
         """Rollback an ECS deployment."""
         cluster_name = action.parameters.get("cluster_name")
         service_name = action.parameters.get("service_name")
@@ -355,10 +354,9 @@ class ActionExecutor:
         except Exception as e:
             raise Exception(f"Failed to rollback ECS deployment: {str(e)}")
 
-    def _rollback_lambda_deployment(self,
-        action: Action,
-        previous_version: str) -> Dict[str,
-        Any]:
+    def _rollback_lambda_deployment(
+        self, action: Action, previous_version: str
+    ) -> Dict[str, Any]:
         """Rollback a Lambda deployment."""
         function_name = action.parameters.get("function_name")
 
@@ -439,19 +437,21 @@ class ActionExecutor:
         try:
             cloudfront_client = boto3.client('cloudfront')
 
-            _ = cloudfront_client.create_invalidation(
+            response = cloudfront_client.create_invalidation(
                 DistributionId=distribution_id,
                 InvalidationBatch={
                     'Paths': {
                         'Quantity': len(paths),
-                            'Items': paths
+                        'Items': paths,
                     },
                     'CallerReference': f"devops-ai-{int(time.time())}"
                 }
             )
 
             return {
-                "message": f"CloudFront distribution {distribution_id} cache cleared",
+                "message": (
+                    f"CloudFront distribution {distribution_id} cache cleared"
+                ),
                 "distribution_id": distribution_id,
                 "invalidation_id": response['Invalidation']['Id'],
                 "paths": paths
@@ -474,19 +474,20 @@ class ActionExecutor:
         else:
             raise ValueError(f"Unsupported database type: {db_type}")
 
-    def _restart_rds_instance(self,
-        action: Action,
-        db_identifier: str) -> Dict[str,
-        Any]:
+    def _restart_rds_instance(
+        self, action: Action, db_identifier: str
+    ) -> Dict[str, Any]:
         """Restart an RDS instance."""
         try:
-            _ = rds_client.reboot_db_instance(
+            response = rds_client.reboot_db_instance(
                 DBInstanceIdentifier=db_identifier,
                 ForceFailover=False
             )
 
             return {
-                "message": f"RDS instance {db_identifier} restart initiated",
+                "message": (
+                    f"RDS instance {db_identifier} restart initiated"
+                ),
                 "db_identifier": db_identifier,
                 "status": response['DBInstance']['DBInstanceStatus']
             }
@@ -515,8 +516,9 @@ class ActionExecutor:
     @tracer.capture_method
     def _optimize_cost(self, action: Action) -> Dict[str, Any]:
         """Optimize costs."""
-        optimization_type = action.parameters.get("optimization_type",
-            "general")
+        optimization_type = action.parameters.get(
+            "optimization_type", "general"
+        )
 
         # This would integrate with cost optimization services
         return {
@@ -529,8 +531,10 @@ class ActionExecutor:
     def _notify_team(self, action: Action) -> Dict[str, Any]:
         """Notify team members."""
         channels = action.parameters.get("channels", [])
-        message = action.parameters.get("message",
-            "Automated notification from DevOps AI Agent")
+        message = action.parameters.get(
+            "message",
+            "Automated notification from DevOps AI Agent",
+        )
 
         # This would integrate with Slack, Teams, etc.
         return {
@@ -544,8 +548,9 @@ class ActionExecutor:
         """Escalate incident to human operators."""
         incident_id = action.parameters.get("incident_id")
         reason = action.parameters.get("reason", "Agent unable to resolve")
-        escalation_target = action.parameters.get("escalation_target",
-            "on-call-engineer")
+        escalation_target = action.parameters.get(
+            "escalation_target", "on-call-engineer"
+        )
 
         # This would integrate with paging systems like PagerDuty
         return {
