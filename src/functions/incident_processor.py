@@ -46,16 +46,16 @@ class IncidentProcessor:
         self.context_table = dynamodb.Table(config.dynamodb.context_table)
         self.actions_table = dynamodb.Table(config.dynamodb.actions_table)
 
-    def process_cloudwatch_alarm(self,
-        alarm_data: Dict[str,
-        Any]) -> Dict[str,
-        Any]:
+    def process_cloudwatch_alarm(
+        self, alarm_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Process a CloudWatch alarm event."""
         try:
             # Extract alarm information
             alarm_name = alarm_data.get('AlarmName', 'unknown')
             alarm_state = alarm_data.get('NewStateValue', 'UNKNOWN')
-            alarm_reason = alarm_data.get('StateChangeTime', 'unknown')
+            # State change time retained in metrics; not used here
+            _alarm_reason = alarm_data.get('StateChangeTime', 'unknown')
 
             self.logger.info(f"Processing CloudWatch alarm: {alarm_name}",
                            alarm_state=alarm_state)
@@ -74,7 +74,7 @@ class IncidentProcessor:
                 "incident_id": incident.id,
                 "alarm_name": alarm_name,
                 "action_taken": result.get("action_taken"),
-                    "result": result
+                "result": result,
             }
 
         except Exception as e:
@@ -82,13 +82,12 @@ class IncidentProcessor:
             return {
                 "success": False,
                 "error": str(e),
-                    "alarm_data": alarm_data
+                "alarm_data": alarm_data,
             }
 
-    def process_custom_event(self,
-        event_data: Dict[str,
-        Any]) -> Dict[str,
-        Any]:
+    def process_custom_event(
+        self, event_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Process a custom event (API call, manual trigger, etc.)."""
         try:
             # Extract event information
@@ -113,7 +112,7 @@ class IncidentProcessor:
                 "incident_id": incident.id,
                 "event_type": event_type,
                 "action_taken": result.get("action_taken"),
-                    "result": result
+                "result": result,
             }
 
         except Exception as e:
@@ -121,7 +120,7 @@ class IncidentProcessor:
             return {
                 "success": False,
                 "error": str(e),
-                    "event_data": event_data
+                "event_data": event_data,
             }
 
     def _create_incident_from_alarm(self,
@@ -145,10 +144,10 @@ class IncidentProcessor:
             "alarm_name": alarm_name,
             "alarm_state": alarm_state,
             "state_change_time": alarm_data.get('StateChangeTime'),
-                "reason": alarm_data.get('NewStateReason', ''),
-                "threshold": alarm_data.get('Threshold', 0),
-                "metric_name": alarm_data.get('MetricName', ''),
-                "namespace": alarm_data.get('Namespace', '')
+            "reason": alarm_data.get('NewStateReason', ''),
+            "threshold": alarm_data.get('Threshold', 0),
+            "metric_name": alarm_data.get('MetricName', ''),
+            "namespace": alarm_data.get('Namespace', ''),
         }
 
         return Incident(
