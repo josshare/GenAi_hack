@@ -58,18 +58,6 @@ jobs:
         run: |
           python3 scripts/validate-config.py config/config.example.yaml --verbose || true
 
-      - name: Package and Upload Lambda Functions
-        run: |
-          STACK_NAME="${ENVIRONMENT}-ai-agent"
-          S3_BUCKET_NAME="${STACK_NAME}-deployment-artifacts"
-          mkdir -p dist
-          # Package and upload incident-processor
-          (cd src/functions && zip ../../dist/incident-processor.zip incident_processor.py)
-          aws s3 cp dist/incident-processor.zip s3://${S3_BUCKET_NAME}/incident-processor.zip
-          # Package and upload action-executor
-          (cd src/functions && zip ../../dist/action-executor.zip action_executor.py)
-          aws s3 cp dist/action-executor.zip s3://${S3_BUCKET_NAME}/action-executor.zip
-
       - name: Deploy infrastructure (CloudFormation)
         run: |
           STACK_NAME="${ENVIRONMENT}-ai-agent"
@@ -81,6 +69,13 @@ jobs:
           else
             echo "S3 bucket $S3_BUCKET_NAME already exists"
           fi
+          mkdir -p dist
+          # Package and upload incident-processor
+          (cd src/functions && zip ../../dist/incident-processor.zip incident_processor.py)
+          aws s3 cp dist/incident-processor.zip s3://${S3_BUCKET_NAME}/incident-processor.zip
+          # Package and upload action-executor
+          (cd src/functions && zip ../../dist/action-executor.zip action_executor.py)
+          aws s3 cp dist/action-executor.zip s3://${S3_BUCKET_NAME}/action-executor.zip
           # Package and deploy using the composer template
           aws cloudformation package \
             --template-file infrastructure/composer.yaml \
