@@ -197,7 +197,11 @@ class AgentLogger:
         )
 
     def log_incident(
-        self, incident_id: str, severity: str, description: str, metrics: Dict[str, Any]
+        self,
+        incident_id: str,
+        severity: str,
+        description: str,
+        metrics: Dict[str, Any],
     ) -> None:
         """Log incident detection and handling."""
         self.logger.warning(
@@ -209,7 +213,9 @@ class AgentLogger:
             metrics=metrics,
         )
 
-    def log_escalation(self, incident_id: str, reason: str, target: str) -> None:
+    def log_escalation(
+        self, incident_id: str, reason: str, target: str
+    ) -> None:
         """Log escalation events."""
         self.logger.error(
             "Incident escalated",
@@ -221,7 +227,9 @@ class AgentLogger:
 
     def log_metrics(self, metrics: Dict[str, Any]) -> None:
         """Log performance metrics."""
-        self.logger.info("Performance metrics", agent=self.agent_name, metrics=metrics)
+        self.logger.info(
+            "Performance metrics", agent=self.agent_name, metrics=metrics
+        )
 
 
 def get_logger(name: Optional[str] = None) -> structlog.BoundLogger:

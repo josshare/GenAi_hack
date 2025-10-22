@@ -130,7 +130,9 @@ class ActionExecutor:
         try:
             # Force new deployment
             _ = ecs_client.update_service(
-                cluster=cluster_name, service=service_name, forceNewDeployment=True
+                cluster=cluster_name,
+                service=service_name,
+                forceNewDeployment=True,
             )
 
             return {
@@ -178,11 +180,14 @@ class ActionExecutor:
             )
 
             # Update environment variables to force restart
-            current_env = current_config.get("Environment", {}).get("Variables", {})
+            current_env = current_config.get("Environment", {}).get(
+                "Variables", {}
+            )
             current_env["_restart_trigger"] = str(int(time.time()))
 
             lambda_client.update_function_configuration(
-                FunctionName=function_name, Environment={"Variables": current_env}
+                FunctionName=function_name,
+                Environment={"Variables": current_env},
             )
 
             return {
@@ -227,7 +232,8 @@ class ActionExecutor:
 
             return {
                 "message": (
-                    f"Auto Scaling Group {asg_name} scaled " f"to {target_capacity}"
+                    f"Auto Scaling Group {asg_name} scaled to "
+                    f"{target_capacity}"
                 ),
                 "asg_name": asg_name,
                 "desired_capacity": target_capacity,
@@ -253,11 +259,15 @@ class ActionExecutor:
 
         try:
             _ = ecs_client.update_service(
-                cluster=cluster_name, service=service_name, desiredCount=target_capacity
+                cluster=cluster_name,
+                service=service_name,
+                desiredCount=target_capacity,
             )
 
             return {
-                "message": f"ECS service {service_name} scaled to {target_capacity}",
+                "message": (
+                    f"ECS service {service_name} scaled to {target_capacity}"
+                ),
                 "cluster": cluster_name,
                 "service": service_name,
                 "desired_count": target_capacity,
@@ -339,7 +349,8 @@ class ActionExecutor:
 
             return {
                 "message": (
-                    f"ECS service {service_name} rolled back to " f"{previous_version}"
+                    f"ECS service {service_name} rolled back to "
+                    f"{previous_version}"
                 ),
                 "cluster": cluster_name,
                 "service": service_name,
@@ -365,7 +376,9 @@ class ActionExecutor:
             )
 
             versions = [
-                v["Version"] for v in response["Versions"] if v["Version"] != "$LATEST"
+                v["Version"]
+                for v in response["Versions"]
+                if v["Version"] != "$LATEST"
             ]
             if versions:
                 previous_version = versions[-1]
@@ -408,17 +421,22 @@ class ActionExecutor:
         cache_cluster_id = action.parameters.get("cache_cluster_id")
 
         if not cache_cluster_id:
-            raise ValueError("cache_cluster_id is required for ElastiCache flush")
+            raise ValueError(
+                "cache_cluster_id is required for ElastiCache flush"
+            )
 
         try:
             # For Redis, we would use the redis-py client to flush
             # For Memcached, we would use boto3 to restart the cluster
             _ = elasticache_client.reboot_cache_cluster(
-                CacheClusterId=cache_cluster_id, CacheNodeIdsToReboot=["0001"]
+                CacheClusterId=cache_cluster_id,
+                CacheNodeIdsToReboot=["0001"],
             )
 
             return {
-                "message": f"ElastiCache cluster {cache_cluster_id} cache cleared",
+                "message": (
+                    f"ElastiCache cluster {cache_cluster_id} cache cleared"
+                ),
                 "cache_cluster_id": cache_cluster_id,
             }
 
@@ -431,7 +449,9 @@ class ActionExecutor:
         paths = action.parameters.get("paths", ["/*"])
 
         if not distribution_id:
-            raise ValueError("distribution_id is required for CloudFront invalidation")
+            raise ValueError(
+                "distribution_id is required for CloudFront invalidation"
+            )
 
         try:
             cloudfront_client = boto3.client("cloudfront")
@@ -448,7 +468,9 @@ class ActionExecutor:
             )
 
             return {
-                "message": (f"CloudFront distribution {distribution_id} cache cleared"),
+                "message": (
+                    f"CloudFront distribution {distribution_id} cache cleared"
+                ),
                 "distribution_id": distribution_id,
                 "invalidation_id": response["Invalidation"]["Id"],
                 "paths": paths,
@@ -505,14 +527,17 @@ class ActionExecutor:
             "incident_id": incident_id,
             "report_type": report_type,
             "report_url": (
-                f"s3://{config.s3.artifacts_bucket}/reports/" f"{incident_id}.pdf"
+                f"s3://{config.s3.artifacts_bucket}/reports/"
+                f"{incident_id}.pdf"
             ),
         }
 
     @tracer.capture_method
     def _optimize_cost(self, action: Action) -> Dict[str, Any]:
         """Optimize costs."""
-        optimization_type = action.parameters.get("optimization_type", "general")
+        optimization_type = action.parameters.get(
+            "optimization_type", "general"
+        )
 
         # This would integrate with cost optimization services
         return {
@@ -548,7 +573,9 @@ class ActionExecutor:
 
         # This would integrate with paging systems like PagerDuty
         return {
-            "message": (f"Incident {incident_id} escalated to {escalation_target}"),
+            "message": (
+                f"Incident {incident_id} escalated to {escalation_target}"
+            ),
             "incident_id": incident_id,
             "reason": reason,
             "escalation_target": escalation_target,

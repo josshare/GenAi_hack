@@ -43,7 +43,9 @@ class Incident(BaseModel):
     """Incident model."""
 
     id: str = Field(description="Unique incident identifier")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
     severity: Severity = Field(description="Incident severity level")
     description: str = Field(description="Human-readable incident description")
     service: str = Field(description="Affected service or resource")
@@ -51,7 +53,9 @@ class Incident(BaseModel):
         default_factory=dict, description="Relevant metrics"
     )
     status: str = Field(default="open", description="Incident status")
-    actions_taken: List[str] = Field(default_factory=list, description="Actions taken")
+    actions_taken: List[str] = Field(
+        default_factory=list, description="Actions taken"
+    )
     resolved_at: Optional[datetime] = Field(
         default=None, description="Resolution timestamp"
     )
@@ -69,11 +73,15 @@ class Action(BaseModel):
     )
     status: str = Field(default="pending", description="Action status")
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence score")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
     executed_at: Optional[datetime] = Field(
         default=None, description="Execution timestamp"
     )
-    result: Optional[Dict[str, Any]] = Field(default=None, description="Action result")
+    result: Optional[Dict[str, Any]] = Field(
+        default=None, description="Action result"
+    )
 
 
 class DecisionContext(BaseModel):
@@ -86,7 +94,9 @@ class DecisionContext(BaseModel):
     current_metrics: Dict[str, Any] = Field(
         default_factory=dict, description="Current system metrics"
     )
-    available_actions: List[ActionType] = Field(description="Available action types")
+    available_actions: List[ActionType] = Field(
+        description="Available action types"
+    )
     constraints: Dict[str, Any] = Field(
         default_factory=dict, description="System constraints"
     )
@@ -106,9 +116,15 @@ class BedrockAgent:
         )
 
         # Initialize other AWS services
-        self.cloudwatch = boto3.client("cloudwatch", region_name=self.config.aws.region)
-        self.dynamodb = boto3.resource("dynamodb", region_name=self.config.aws.region)
-        self.lambda_client = boto3.client("lambda", region_name=self.config.aws.region)
+        self.cloudwatch = boto3.client(
+            "cloudwatch", region_name=self.config.aws.region
+        )
+        self.dynamodb = boto3.resource(
+            "dynamodb", region_name=self.config.aws.region
+        )
+        self.lambda_client = boto3.client(
+            "lambda", region_name=self.config.aws.region
+        )
 
         # Load agent instructions
         self.instructions = self._load_agent_instructions()
@@ -163,7 +179,8 @@ class BedrockAgent:
         """
 
     @retry(
-        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10)
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
     )
     def _invoke_bedrock(self, messages: List[Dict[str, str]]) -> str:
         """Invoke Bedrock model with retry logic."""
@@ -238,7 +255,9 @@ class BedrockAgent:
         JSON format.
         """
 
-        messages = [{"role": "user", "content": f"{self.instructions}\n\n{prompt}"}]
+        messages = [
+            {"role": "user", "content": f"{self.instructions}\n\n{prompt}"}
+        ]
 
         try:
             response = self._invoke_bedrock(messages)
@@ -257,7 +276,9 @@ class BedrockAgent:
             return analysis
 
         except Exception as e:
-            self.logger.error(f"Failed to analyze incident {incident.id}: {str(e)}")
+            self.logger.error(
+                f"Failed to analyze incident {incident.id}: {str(e)}"
+            )
             # Fallback to escalation
             return {
                 "action": "escalate",
@@ -283,7 +304,9 @@ class BedrockAgent:
             result = self._execute_specific_action(action)
 
             # Update action status
-            action.status = "completed" if result.get("success", False) else "failed"
+            action.status = (
+                "completed" if result.get("success", False) else "failed"
+            )
             action.result = result
 
             self.logger.log_action(
@@ -296,7 +319,9 @@ class BedrockAgent:
             return result
 
         except Exception as e:
-            self.logger.error(f"Failed to execute action {action.id}: {str(e)}")
+            self.logger.error(
+                f"Failed to execute action {action.id}: {str(e)}"
+            )
             action.status = "failed"
             action.result = {"success": False, "error": str(e)}
 
@@ -363,7 +388,9 @@ class BedrockAgent:
         return {
             "success": True,
             "message": f"Deployment rolled back for {action.target}",
-            "previous_version": action.parameters.get("previous_version", "unknown"),
+            "previous_version": action.parameters.get(
+                "previous_version", "unknown"
+            ),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -425,7 +452,9 @@ class BedrockAgent:
         return {
             "success": True,
             "message": f"Incident {action.incident_id} escalated",
-            "reason": action.parameters.get("reason", "Agent unable to resolve"),
+            "reason": action.parameters.get(
+                "reason", "Agent unable to resolve"
+            ),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -499,7 +528,8 @@ class BedrockAgent:
         confidence_threshold = self.config.agent.confidence_threshold
         if analysis.get("confidence", 0.0) < confidence_threshold:
             self.logger.warning(
-                f"Low confidence analysis for incident {incident.id}, " f"escalating"
+                f"Low confidence analysis for incident {incident.id}, "
+                f"escalating"
             )
             return self.process_incident(incident)  # This will escalate
 

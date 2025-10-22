@@ -21,7 +21,9 @@ class MetricData(BaseModel):
         default_factory=dict, description="Metric dimensions"
     )
     value: float = Field(description="Metric value")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
     unit: str = Field(default="Count", description="Metric unit")
 
 
@@ -59,7 +61,9 @@ class CloudWatchMonitor:
         self.logger = get_logger("cloudwatch-monitor")
 
         # Initialize CloudWatch client
-        self.cloudwatch = boto3.client("cloudwatch", region_name=self.config.aws.region)
+        self.cloudwatch = boto3.client(
+            "cloudwatch", region_name=self.config.aws.region
+        )
 
         # Initialize SNS client for notifications
         self.sns = boto3.client("sns", region_name=self.config.aws.region)
@@ -113,7 +117,8 @@ class CloudWatchMonitor:
                 Namespace=namespace,
                 MetricName=metric_name,
                 Dimensions=[
-                    {"Name": name, "Value": value} for name, value in dimensions.items()
+                    {"Name": name, "Value": value}
+                    for name, value in dimensions.items()
                 ],
                 StartTime=start_time,
                 EndTime=end_time,
@@ -169,7 +174,9 @@ class CloudWatchMonitor:
             self.logger.error(f"Failed to delete alarm: {str(e)}")
             return False
 
-    def list_alarms(self, state_value: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_alarms(
+        self, state_value: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """List CloudWatch alarms."""
         try:
             params = {}
@@ -189,7 +196,9 @@ class CloudWatchMonitor:
         """Set alarm state."""
         try:
             self.cloudwatch.set_alarm_state(
-                AlarmName=alarm_name, StateValue=state_value, StateReason=state_reason
+                AlarmName=alarm_name,
+                StateValue=state_value,
+                StateReason=state_reason,
             )
 
             self.logger.info(f"Alarm state set: {alarm_name} -> {state_value}")
@@ -324,7 +333,11 @@ class DevOpsAIMonitor:
         return success_count == len(metrics)
 
     def publish_incident_metrics(
-        self, incident_id: str, severity: str, service: str, metrics: Dict[str, float]
+        self,
+        incident_id: str,
+        severity: str,
+        service: str,
+        metrics: Dict[str, float],
     ) -> bool:
         """Publish incident-specific metrics."""
         dimensions = {
@@ -333,10 +346,16 @@ class DevOpsAIMonitor:
             "Service": service,
         }
 
-        return self.publish_agent_metrics("incident-monitor", metrics, dimensions)
+        return self.publish_agent_metrics(
+            "incident-monitor", metrics, dimensions
+        )
 
     def publish_action_metrics(
-        self, action_type: str, success: bool, duration: float, confidence: float
+        self,
+        action_type: str,
+        success: bool,
+        duration: float,
+        confidence: float,
     ) -> bool:
         """Publish action execution metrics."""
         metrics = {
@@ -347,7 +366,9 @@ class DevOpsAIMonitor:
 
         dimensions = {"ActionType": action_type, "Success": str(success)}
 
-        return self.publish_agent_metrics("action-executor", metrics, dimensions)
+        return self.publish_agent_metrics(
+            "action-executor", metrics, dimensions
+        )
 
     def get_service_health_metrics(
         self, service_name: str, hours_back: int = 1
@@ -380,7 +401,9 @@ class DevOpsAIMonitor:
         anomalies = []
 
         # Get historical metrics
-        health_metrics = self.get_service_health_metrics(service_name, hours_back)
+        health_metrics = self.get_service_health_metrics(
+            service_name, hours_back
+        )
 
         # Simple anomaly detection based on thresholds
         for metric_name, datapoints in health_metrics.items():
@@ -407,10 +430,14 @@ class DevOpsAIMonitor:
                             "value": avg_value,
                             "threshold": threshold,
                             "severity": (
-                                "high" if avg_value > threshold * 1.5 else "medium"
+                                "high"
+                                if avg_value > threshold * 1.5
+                                else "medium"
                             ),
                             "service": service_name,
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "timestamp": datetime.now(
+                                timezone.utc
+                            ).isoformat(),
                         }
                     )
 
@@ -424,7 +451,8 @@ class DevOpsAIMonitor:
             dashboard_body = {"widgets": widgets}
 
             self.monitor.cloudwatch.put_dashboard(
-                DashboardName=dashboard_name, DashboardBody=json.dumps(dashboard_body)
+                DashboardName=dashboard_name,
+                DashboardBody=json.dumps(dashboard_body),
             )
 
             self.logger.info(f"Dashboard created: {dashboard_name}")

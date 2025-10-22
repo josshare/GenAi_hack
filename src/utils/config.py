@@ -132,7 +132,9 @@ class RemediationConfig(BaseSettings):
     )
     escalation_enabled: bool = Field(default=True)
     escalation_timeout_minutes: int = Field(default=30, ge=1)
-    notification_channels: list[str] = Field(default_factory=lambda: ["slack", "email"])
+    notification_channels: list[str] = Field(
+        default_factory=lambda: ["slack", "email"]
+    )
 
 
 class SecurityConfig(BaseSettings):
@@ -153,7 +155,9 @@ class LoggingConfig(BaseSettings):
     format: str = Field(default="json")
     include_request_id: bool = Field(default=True)
     include_trace_id: bool = Field(default=True)
-    destinations: list[str] = Field(default_factory=lambda: ["cloudwatch", "s3"])
+    destinations: list[str] = Field(
+        default_factory=lambda: ["cloudwatch", "s3"]
+    )
 
 
 class FeaturesConfig(BaseSettings):
@@ -170,7 +174,9 @@ class FeaturesConfig(BaseSettings):
 class AppConfig(BaseSettings):
     """Main application configuration."""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8"
+    )
 
     aws: AWSConfig = Field(default_factory=AWSConfig)
     bedrock: BedrockConfig = Field(default_factory=BedrockConfig)
@@ -193,7 +199,9 @@ class AppConfig(BaseSettings):
         config_file = Path(config_path)
 
         if not config_file.exists():
-            raise FileNotFoundError(f"Configuration file not found: {config_path}")
+            raise FileNotFoundError(
+                f"Configuration file not found: {config_path}"
+            )
 
         with open(config_file, "r") as f:
             config_data = yaml.safe_load(f)
@@ -221,7 +229,9 @@ class AppConfig(BaseSettings):
             raise ValueError("AWS account ID must be 12 digits")
 
         # Validate Bedrock model ID format
-        if not self.bedrock.model_id.startswith(("anthropic.", "amazon.", "ai21.")):
+        if not self.bedrock.model_id.startswith(
+            ("anthropic.", "amazon.", "ai21.")
+        ):
             raise ValueError("Invalid Bedrock model ID format")
 
         # Validate thresholds

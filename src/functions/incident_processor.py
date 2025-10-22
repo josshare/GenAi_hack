@@ -7,8 +7,10 @@ from typing import Any, Dict, List
 
 import boto3
 from aws_lambda_powertools import Logger, Tracer
-from aws_lambda_powertools.utilities.data_classes import (EventBridgeEvent,
-                                                          event_source)
+from aws_lambda_powertools.utilities.data_classes import (
+    EventBridgeEvent,
+    event_source,
+)
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
 from ..agents.bedrock_agent import BedrockAgent, Incident, Severity
@@ -44,7 +46,9 @@ class IncidentProcessor:
         self.context_table = dynamodb.Table(config.dynamodb.context_table)
         self.actions_table = dynamodb.Table(config.dynamodb.actions_table)
 
-    def process_cloudwatch_alarm(self, alarm_data: Dict[str, Any]) -> Dict[str, Any]:
+    def process_cloudwatch_alarm(
+        self, alarm_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Process a CloudWatch alarm event."""
         try:
             # Extract alarm information
@@ -83,7 +87,9 @@ class IncidentProcessor:
                 "alarm_data": alarm_data,
             }
 
-    def process_custom_event(self, event_data: Dict[str, Any]) -> Dict[str, Any]:
+    def process_custom_event(
+        self, event_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Process a custom event (API call, manual trigger, etc.)."""
         try:
             # Extract event information
@@ -122,7 +128,9 @@ class IncidentProcessor:
                 "event_data": event_data,
             }
 
-    def _create_incident_from_alarm(self, alarm_data: Dict[str, Any]) -> Incident:
+    def _create_incident_from_alarm(
+        self, alarm_data: Dict[str, Any]
+    ) -> Incident:
         """Create an incident from CloudWatch alarm data."""
         alarm_name = alarm_data.get("AlarmName", "unknown")
         alarm_state = alarm_data.get("NewStateValue", "UNKNOWN")
@@ -135,7 +143,8 @@ class IncidentProcessor:
 
         # Create incident description
         description = (
-            f"CloudWatch alarm '{alarm_name}' " f"changed state to '{alarm_state}'"
+            f"CloudWatch alarm '{alarm_name}' "
+            f"changed state to '{alarm_state}'"
         )
 
         # Extract relevant metrics
@@ -157,7 +166,9 @@ class IncidentProcessor:
             metrics=metrics,
         )
 
-    def _create_incident_from_event(self, event_data: Dict[str, Any]) -> Incident:
+    def _create_incident_from_event(
+        self, event_data: Dict[str, Any]
+    ) -> Incident:
         """Create an incident from custom event data."""
         event_type = event_data.get("event_type", "unknown")
         service = event_data.get("service", "unknown")
@@ -170,7 +181,9 @@ class IncidentProcessor:
             severity = Severity.MEDIUM
 
         # Create incident description
-        description = event_data.get("description", f"Custom event: {event_type}")
+        description = event_data.get(
+            "description", f"Custom event: {event_type}"
+        )
 
         # Use provided metrics or create default
         metrics = event_data.get(
@@ -240,7 +253,9 @@ class IncidentProcessor:
                         else None
                     ),
                     # 30 days TTL
-                    "ttl": int(datetime.now(timezone.utc).timestamp() + 86400 * 30),
+                    "ttl": int(
+                        datetime.now(timezone.utc).timestamp() + 86400 * 30
+                    ),
                 }
             )
 
@@ -250,14 +265,19 @@ class IncidentProcessor:
             self.logger.error(f"Failed to store incident: {str(e)}")
             raise
 
-    def _process_incident_with_agent(self, incident: Incident) -> Dict[str, Any]:
+    def _process_incident_with_agent(
+        self, incident: Incident
+    ) -> Dict[str, Any]:
         """Process incident using the Bedrock agent."""
         try:
             # Process incident with agent
             result = self.agent.process_incident(incident)
 
             # Store action in DynamoDB if one was taken
-            if result.get("action_taken") and result["action_taken"] != "escalate":
+            if (
+                result.get("action_taken")
+                and result["action_taken"] != "escalate"
+            ):
                 self._store_action(incident, result)
 
             # Update incident status
@@ -270,9 +290,13 @@ class IncidentProcessor:
                 service=incident.service,
                 metrics={
                     "incident_processed": 1.0,
-                    "action_taken": (1.0 if result.get("action_taken") else 0.0),
+                    "action_taken": (
+                        1.0 if result.get("action_taken") else 0.0
+                    ),
                     "escalated": (
-                        1.0 if result.get("action_taken") == "escalate" else 0.0
+                        1.0
+                        if result.get("action_taken") == "escalate"
+                        else 0.0
                     ),
                 },
             )
@@ -280,7 +304,9 @@ class IncidentProcessor:
             return result
 
         except Exception as e:
-            self.logger.error(f"Failed to process incident with agent: {str(e)}")
+            self.logger.error(
+                f"Failed to process incident with agent: {str(e)}"
+            )
 
             # Escalate on agent failure
             return {
@@ -293,7 +319,9 @@ class IncidentProcessor:
                 },
             }
 
-    def _store_action(self, incident: Incident, result: Dict[str, Any]) -> None:
+    def _store_action(
+        self, incident: Incident, result: Dict[str, Any]
+    ) -> None:
         """Store action in DynamoDB."""
         try:
             action_data = result.get("result", {})
@@ -305,10 +333,14 @@ class IncidentProcessor:
                 "target": incident.service,
                 "parameters": action_data.get("parameters", {}),
                 "status": "pending",
-                "confidence": (result.get("analysis", {}).get("confidence", 0.0)),
+                "confidence": (
+                    result.get("analysis", {}).get("confidence", 0.0)
+                ),
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 # 30 days TTL
-                "ttl": int(datetime.now(timezone.utc).timestamp() + 86400 * 30),
+                "ttl": int(
+                    datetime.now(timezone.utc).timestamp() + 86400 * 30
+                ),
             }
 
             self.actions_table.put_item(Item=action_item)
@@ -348,7 +380,9 @@ class IncidentProcessor:
                 },
             )
 
-            self.logger.info(f"Incident status updated: {incident.id} -> {new_status}")
+            self.logger.info(
+                f"Incident status updated: {incident.id} -> {new_status}"
+            )
 
         except Exception as e:
             self.logger.error(f"Failed to update incident status: {str(e)}")
@@ -493,13 +527,17 @@ def incident_api_handler(
         if http_method == "GET" and path.startswith("/incidents/history"):
             # Get incident history
             service = event.get("queryStringParameters", {}).get("service", "")
-            hours_back = int(event.get("queryStringParameters", {}).get("hours", 24))
+            hours_back = int(
+                event.get("queryStringParameters", {}).get("hours", 24)
+            )
 
             incidents = processor.get_incident_history(service, hours_back)
 
             return {
                 "statusCode": 200,
-                "body": json.dumps({"incidents": incidents, "count": len(incidents)}),
+                "body": json.dumps(
+                    {"incidents": incidents, "count": len(incidents)}
+                ),
             }
 
         elif http_method == "POST" and path == "/incidents/resolve":
@@ -526,7 +564,10 @@ def incident_api_handler(
             return {"statusCode": 201, "body": json.dumps(result)}
 
         else:
-            return {"statusCode": 404, "body": json.dumps({"error": "Not found"})}
+            return {
+                "statusCode": 404,
+                "body": json.dumps({"error": "Not found"}),
+            }
 
     except Exception as e:
         lambda_logger.log_error(e, context)
