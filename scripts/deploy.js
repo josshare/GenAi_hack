@@ -96,10 +96,11 @@ function executeCommand(command, options = {}) {
       cwd: options.cwd || PROJECT_ROOT,
       ...options
     });
-    return result.toString().trim();
+    return result ? result.toString().trim() : '';
   } catch (error) {
     log.error(`Command failed: ${command}`);
-    log.error(error.message);
+    const errorMessage = error.stderr || error.stdout || error.message;
+    log.error(errorMessage.toString());
     throw error;
   }
 }
@@ -122,9 +123,10 @@ function createZipPackage(functionName, sourcePath) {
     }
     fs.mkdirSync(tempDir, { recursive: true });
     
-    // Copy source files
+    // Copy source file
     if (fs.existsSync(sourcePath)) {
-      executeCommand(`cp -r "${sourcePath}"/* "${tempDir}"/`, { stdio: 'ignore' });
+      const destPath = path.join(tempDir, path.basename(sourcePath));
+      fs.copyFileSync(sourcePath, destPath);
     }
     
     // Copy common modules
@@ -144,10 +146,10 @@ function createZipPackage(functionName, sourcePath) {
     }
     
     // Install dependencies using uv (replaces pip)
-    executeCommand(`uv pip install -r "${PROJECT_ROOT}/requirements.txt" -t "${tempDir}"`, { stdio: 'ignore' });
+    executeCommand(`uv pip install --no-cache --no-deps --target "${tempDir}" -r "${PROJECT_ROOT}/requirements.prod.txt"`);
     
     // Create zip file
-    executeCommand(`cd "${tempDir}" && zip -r "${zipPath}" . -x "*.pyc" "__pycache__/*" "*.git*"`, { stdio: 'ignore' });
+    executeCommand(`cd "${tempDir}" && zip -r "${zipPath}" . -x "*.pyc" "__pycache__/*" "*.git*" "node_modules/*"`, { stdio: 'ignore' });
     
     // Clean up temp directory
     executeCommand(`rm -rf "${tempDir}"`);
@@ -163,9 +165,50 @@ function createZipPackage(functionName, sourcePath) {
 async function deployLambdaFunction(functionConfig, zipPath) {
   const functionName = `${options.environment}-ai-agent-${functionConfig.name}`;
   const spinner = ora(`Deploying Lambda function: ${functionName}...`).start();
-  
+
+  const s3BucketName = `${options.environment}-ai-agent-deployment-artifacts`;
+  const s3Key = `${functionConfig.name}-${Date.now()}.zip`;
+
   try {
-    const zipBuffer = fs.readFileSync(zipPath);
+    // Ensure S3 bucket exists
+    try {
+      if (!options.dryRun) {
+        await s3.headBucket({ Bucket: s3BucketName }).promise();
+      }
+    } catch (error) {
+      if (error.code === 'NotFound' || error.code === 'NoSuchBucket') {
+        if (!options.dryRun) {
+          spinner.text = `S3 bucket not found. Creating bucket: ${s3BucketName}...`;
+          await s3.createBucket({ Bucket: s3BucketName }).promise();
+          spinner.succeed(`Created S3 bucket: ${s3BucketName}`);
+          spinner.start();
+        } else {
+          log.info(`[Dry Run] Would create S3 bucket: ${s3BucketName}`);
+        }
+      } else {
+        throw error;
+      }
+    }
+
+    // Upload package to S3
+    if (!options.dryRun) {
+      spinner.text = `Uploading ${path.basename(zipPath)} to s3://${s3BucketName}/${s3Key}...`;
+      const zipBuffer = fs.readFileSync(zipPath);
+      await s3.upload({
+        Bucket: s3BucketName,
+        Key: s3Key,
+        Body: zipBuffer
+      }).promise();
+      spinner.succeed(`Uploaded package to s3://${s3BucketName}/${s3Key}`);
+    } else {
+      log.info(`[Dry Run] Would upload ${path.basename(zipPath)} to s3://${s3BucketName}/${s3Key}`);
+    }
+    spinner.start(`Deploying Lambda function: ${functionName}...`);
+
+    const lambdaCode = {
+      S3Bucket: s3BucketName,
+      S3Key: s3Key,
+    };
     
     // Check if function exists
     let functionExists = false;
@@ -183,7 +226,7 @@ async function deployLambdaFunction(functionConfig, zipPath) {
       if (!options.dryRun) {
         await lambda.updateFunctionCode({
           FunctionName: functionName,
-          ZipFile: zipBuffer
+          ...lambdaCode
         }).promise();
         
         await lambda.updateFunctionConfiguration({
@@ -219,7 +262,7 @@ async function deployLambdaFunction(functionConfig, zipPath) {
           Runtime: functionConfig.runtime,
           Role: roleArn,
           Handler: functionConfig.handler,
-          Code: { ZipFile: zipBuffer },
+          Code: lambdaCode,
           Timeout: functionConfig.timeout,
           MemorySize: functionConfig.memorySize,
           Environment: {
@@ -431,9 +474,9 @@ async function main() {
       throw error;
     }
     
-    // Check if Terraform outputs exist
-    if (!fs.existsSync(TERRAFORM_OUTPUTS)) {
-      log.warning('Terraform outputs not found. Make sure infrastructure is deployed first.');
+    // Check if stack outputs exist
+    if (!fs.existsSync(STACK_OUTPUTS)) {
+      log.warning('Stack outputs file not found (stack-outputs.json). Make sure infrastructure is deployed first.');
     }
     
     // Run tests if not skipped
@@ -459,7 +502,7 @@ async function main() {
       const deployedFunctions = [];
       
       for (const functionConfig of LAMBDA_FUNCTIONS) {
-        const sourcePath = path.join(SRC_DIR, 'functions', functionConfig.name);
+        const sourcePath = path.join(SRC_DIR, 'functions', functionConfig.name.replace(/-/g, '_') + '.py');
         
         if (!fs.existsSync(sourcePath)) {
           log.error(`Function source path not found: ${sourcePath}`);

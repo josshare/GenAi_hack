@@ -1,0 +1,22 @@
+# Core dependencies
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# AWS SDK dependencies
+aws-lambda-powertools>=2.30.0
+aws-xray-sdk>=2.12.0
+
+# LLM and AI dependencies
+langchain>=0.1.0
+langchain-community>=0.0.10
+anthropic>=0.8.0
+
+# ChatOps integration
+slack-sdk>=3.23.0
+python-telegram-bot>=20.7
+
+# Utilities
+pyyaml>=6.0.1
+python-dotenv>=1.0.0
+tenacity>=8.2.3
+python-dateutil>=2.8.2
