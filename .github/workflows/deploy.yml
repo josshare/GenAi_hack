@@ -62,15 +62,12 @@ jobs:
         run: |
           STACK_NAME="${ENVIRONMENT}-ai-agent"
           S3_BUCKET_NAME="${STACK_NAME}-deployment-artifacts"
+          mkdir -p dist
           # Package and upload incident-processor
-          cd src/functions/incident_processor
-          zip -r ../../../dist/incident-processor.zip .
-          cd -
+          (cd src/functions && zip ../../dist/incident-processor.zip incident_processor.py)
           aws s3 cp dist/incident-processor.zip s3://${S3_BUCKET_NAME}/incident-processor.zip
           # Package and upload action-executor
-          cd src/functions/action_executor
-          zip -r ../../../dist/action-executor.zip .
-          cd -
+          (cd src/functions && zip ../../dist/action-executor.zip action_executor.py)
           aws s3 cp dist/action-executor.zip s3://${S3_BUCKET_NAME}/action-executor.zip
 
       - name: Deploy infrastructure (CloudFormation)
