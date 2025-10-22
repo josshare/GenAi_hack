@@ -273,8 +273,8 @@ class IncidentProcessor:
             result = self.agent.process_incident(incident)
 
             # Store action in DynamoDB if one was taken
-            if (result.get("action_taken") and 
-                result["action_taken"] != "escalate"):
+            if (result.get("action_taken") and
+                    result["action_taken"] != "escalate"):
                 self._store_action(incident, result)
 
             # Update incident status
