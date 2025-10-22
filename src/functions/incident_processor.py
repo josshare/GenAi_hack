@@ -55,7 +55,7 @@ class IncidentProcessor:
             alarm_name = alarm_data.get('AlarmName', 'unknown')
             alarm_state = alarm_data.get('NewStateValue', 'UNKNOWN')
             # State change time retained in metrics; not used here
-            _ = alarm_data.get('StateChangeTime', 'unknown')
+            alarm_data.get('StateChangeTime', 'unknown')
 
             self.logger.info(
                 f"Processing CloudWatch alarm: {alarm_name}",
@@ -248,10 +248,13 @@ class IncidentProcessor:
                     'status': incident.status,
                     'actions_taken': incident.actions_taken,
                     'resolved_at': (
-                        incident.resolved_at.isoformat() if incident.resolved_at else None
+                        incident.resolved_at.isoformat()
+                        if incident.resolved_at else None
                     ),
                     # 30 days TTL
-                    'ttl': int((datetime.now(timezone.utc).timestamp() + 86400 * 30)),
+                    'ttl': int(
+                        datetime.now(timezone.utc).timestamp() + 86400 * 30
+                    ),
                 }
             )
 
@@ -270,7 +273,8 @@ class IncidentProcessor:
             result = self.agent.process_incident(incident)
 
             # Store action in DynamoDB if one was taken
-            if result.get("action_taken") and result["action_taken"] != "escalate":
+            if (result.get("action_taken") and 
+                result["action_taken"] != "escalate"):
                 self._store_action(incident, result)
 
             # Update incident status
@@ -283,9 +287,12 @@ class IncidentProcessor:
                 service=incident.service,
                 metrics={
                     "incident_processed": 1.0,
-                    "action_taken": 1.0 if result.get("action_taken") else 0.0,
+                    "action_taken": (
+                        1.0 if result.get("action_taken") else 0.0
+                    ),
                     "escalated": (
-                        1.0 if result.get("action_taken") == "escalate" else 0.0
+                        1.0 if result.get("action_taken") == "escalate"
+                        else 0.0
                     ),
                 },
             )
@@ -293,7 +300,9 @@ class IncidentProcessor:
             return result
 
         except Exception as e:
-            self.logger.error(f"Failed to process incident with agent: {str(e)}")
+            self.logger.error(
+                f"Failed to process incident with agent: {str(e)}"
+            )
 
             # Escalate on agent failure
             return {
@@ -320,10 +329,14 @@ class IncidentProcessor:
                 'target': incident.service,
                 'parameters': action_data.get("parameters", {}),
                 'status': "pending",
-                'confidence': result.get("analysis", {}).get("confidence", 0.0),
+                'confidence': (
+                    result.get("analysis", {}).get("confidence", 0.0)
+                ),
                 'created_at': datetime.now(timezone.utc).isoformat(),
                 # 30 days TTL
-                'ttl': int((datetime.now(timezone.utc).timestamp() + 86400 * 30)),
+                'ttl': int(
+                    datetime.now(timezone.utc).timestamp() + 86400 * 30
+                ),
             }
 
             self.actions_table.put_item(Item=action_item)
@@ -363,7 +376,9 @@ class IncidentProcessor:
                 }
             )
 
-            self.logger.info(f"Incident status updated: {incident.id} -> {new_status}")
+            self.logger.info(
+                f"Incident status updated: {incident.id} -> {new_status}"
+            )
 
         except Exception as e:
             self.logger.error(f"Failed to update incident status: {str(e)}")
@@ -378,7 +393,8 @@ class IncidentProcessor:
 
             response = self.incidents_table.scan(
                 FilterExpression=(
-                    'service = :service AND #timestamp BETWEEN :start_time AND :end_time'
+                    'service = :service AND '
+                    '#timestamp BETWEEN :start_time AND :end_time'
                 ),
                 ExpressionAttributeNames={'#timestamp': 'timestamp'},
                 ExpressionAttributeValues={
@@ -439,9 +455,10 @@ class IncidentProcessor:
 @logger.inject_lambda_context
 @tracer.capture_lambda_handler
 @event_source(data_class=EventBridgeEvent)
-def cloudwatch_alarm_handler(event: EventBridgeEvent,
-    context: LambdaContext) -> Dict[str,
-    Any]:
+def cloudwatch_alarm_handler(
+    event: EventBridgeEvent,
+    context: LambdaContext
+) -> Dict[str, Any]:
     """Handle CloudWatch alarm events."""
     lambda_logger.log_event(event.raw_event, context)
 
@@ -475,10 +492,10 @@ def cloudwatch_alarm_handler(event: EventBridgeEvent,
 # Lambda handler for custom events
 @logger.inject_lambda_context
 @tracer.capture_lambda_handler
-def custom_event_handler(event: Dict[str,
-    Any],
-    context: LambdaContext) -> Dict[str,
-    Any]:
+def custom_event_handler(
+    event: Dict[str, Any],
+    context: LambdaContext
+) -> Dict[str, Any]:
     """Handle custom events."""
     lambda_logger.log_event(event, context)
 
@@ -508,10 +525,10 @@ def custom_event_handler(event: Dict[str,
 # Lambda handler for incident management API
 @logger.inject_lambda_context
 @tracer.capture_lambda_handler
-def incident_api_handler(event: Dict[str,
-    Any],
-    context: LambdaContext) -> Dict[str,
-    Any]:
+def incident_api_handler(
+    event: Dict[str, Any],
+    context: LambdaContext
+) -> Dict[str, Any]:
     """Handle incident management API requests."""
     lambda_logger.log_event(event, context)
 
@@ -524,9 +541,9 @@ def incident_api_handler(event: Dict[str,
         if http_method == 'GET' and path.startswith('/incidents/history'):
             # Get incident history
             service = event.get('queryStringParameters', {}).get('service', '')
-            hours_back = int(event.get('queryStringParameters',
-                {}).get('hours',
-                24))
+            hours_back = int(
+                event.get('queryStringParameters', {}).get('hours', 24)
+            )
 
             incidents = processor.get_incident_history(service, hours_back)
 

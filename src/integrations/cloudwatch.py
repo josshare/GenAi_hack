@@ -15,11 +15,14 @@ class MetricData(BaseModel):
     """CloudWatch metric data model."""
     metric_name: str = Field(description="Name of the metric")
     namespace: str = Field(description="CloudWatch namespace")
-    dimensions: Dict[str,
-        str] = Field(default_factory=dict,
-        description="Metric dimensions")
+    dimensions: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Metric dimensions"
+    )
     value: float = Field(description="Metric value")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
     unit: str = Field(default="Count", description="Metric unit")
 
 
@@ -28,21 +31,28 @@ class AlarmConfig(BaseModel):
     alarm_name: str = Field(description="Name of the alarm")
     metric_name: str = Field(description="Metric to monitor")
     namespace: str = Field(description="CloudWatch namespace")
-    dimensions: Dict[str,
-        str] = Field(default_factory=dict,
-        description="Metric dimensions")
+    dimensions: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Metric dimensions"
+    )
     threshold: float = Field(description="Alarm threshold")
     comparison_operator: str = Field(description="Comparison operator")
-    evaluation_periods: int = Field(default=2,
-        description="Number of evaluation periods")
+    evaluation_periods: int = Field(
+        default=2,
+        description="Number of evaluation periods"
+    )
     period: int = Field(default=300, description="Period in seconds")
     statistic: str = Field(default="Average", description="Statistic to use")
     unit: str = Field(default="Count", description="Metric unit")
     alarm_description: str = Field(description="Description of the alarm")
-    alarm_actions: List[str] = Field(default_factory=list,
-        description="SNS topics for alarm actions")
-    ok_actions: List[str] = Field(default_factory=list,
-        description="SNS topics for OK actions")
+    alarm_actions: List[str] = Field(
+        default_factory=list,
+        description="SNS topics for alarm actions"
+    )
+    ok_actions: List[str] = Field(
+        default_factory=list,
+        description="SNS topics for OK actions"
+    )
 
 
 class CloudWatchMonitor:
@@ -109,7 +119,7 @@ class CloudWatchMonitor:
     ) -> List[Dict[str, Any]]:
         """Get metric statistics from CloudWatch."""
         try:
-            _ = self.cloudwatch.get_metric_statistics(
+            response = self.cloudwatch.get_metric_statistics(
                 Namespace=namespace,
                 MetricName=metric_name,
                 Dimensions=[
@@ -327,7 +337,8 @@ class DevOpsAIMonitor:
                 success_count += 1
 
         self.logger.info(
-            f"Published {success_count}/{len(metrics)} metrics for agent {agent_name}"
+            f"Published {success_count}/{len(metrics)} metrics "
+            f"for agent {agent_name}"
         )
 
         return success_count == len(metrics)
@@ -346,9 +357,11 @@ class DevOpsAIMonitor:
             "Service": service
         }
 
-        return self.publish_agent_metrics("incident-monitor",
+        return self.publish_agent_metrics(
+            "incident-monitor",
             metrics,
-            dimensions)
+            dimensions
+        )
 
     def publish_action_metrics(
         self,
@@ -369,9 +382,11 @@ class DevOpsAIMonitor:
             "Success": str(success)
         }
 
-        return self.publish_agent_metrics("action-executor",
+        return self.publish_agent_metrics(
+            "action-executor",
             metrics,
-            dimensions)
+            dimensions
+        )
 
     def get_service_health_metrics(
         self,
@@ -408,8 +423,10 @@ class DevOpsAIMonitor:
         anomalies = []
 
         # Get historical metrics
-        health_metrics = self.get_service_health_metrics(service_name,
-            hours_back)
+        health_metrics = self.get_service_health_metrics(
+            service_name,
+            hours_back
+        )
 
         # Simple anomaly detection based on thresholds
         for metric_name, datapoints in health_metrics.items():
@@ -434,17 +451,21 @@ class DevOpsAIMonitor:
                         "metric": metric_name,
                         "value": avg_value,
                         "threshold": threshold,
-                        "severity": "high" if avg_value > threshold * 1.5 else "medium",
+                        "severity": (
+                            "high" if avg_value > threshold * 1.5
+                            else "medium"
+                        ),
                         "service": service_name,
                         "timestamp": datetime.now(timezone.utc).isoformat()
                     })
 
         return anomalies
 
-    def create_dashboard(self,
+    def create_dashboard(
+        self,
         dashboard_name: str,
-        widgets: List[Dict[str,
-        Any]]) -> bool:
+        widgets: List[Dict[str, Any]]
+    ) -> bool:
         """Create a CloudWatch dashboard."""
         try:
             dashboard_body = {
@@ -474,7 +495,12 @@ class DevOpsAIMonitor:
                 "height": 6,
                 "properties": {
                     "metrics": [
-                        [self.config.cloudwatch.namespace, "CPUUtilization", "Service", "DevOpsAI"],
+                        [
+                            self.config.cloudwatch.namespace,
+                            "CPUUtilization",
+                            "Service",
+                            "DevOpsAI"
+                        ],
                         [".", "MemoryUtilization", ".", "."],
                         [".", "ErrorRate", ".", "."],
                         [".", "ResponseTime", ".", "."]
@@ -494,7 +520,12 @@ class DevOpsAIMonitor:
                 "height": 6,
                 "properties": {
                     "metrics": [
-                        [self.config.cloudwatch.namespace, "ActionSuccess", "Agent", "action-executor"],
+                        [
+                            self.config.cloudwatch.namespace,
+                            "ActionSuccess",
+                            "Agent",
+                            "action-executor"
+                        ],
                         [".", "ActionDuration", ".", "."],
                         [".", "ActionConfidence", ".", "."]
                     ],

@@ -242,7 +242,8 @@ class ActionExecutor:
 
             return {
                 "message": (
-                    f"Auto Scaling Group {asg_name} scaled to {target_capacity}"
+                    f"Auto Scaling Group {asg_name} scaled "
+                    f"to {target_capacity}"
                 ),
                 "asg_name": asg_name,
                 "desired_capacity": target_capacity
@@ -361,7 +362,8 @@ class ActionExecutor:
 
             return {
                 "message": (
-                    f"ECS service {service_name} rolled back to {previous_version}"
+                    f"ECS service {service_name} rolled back to "
+                    f"{previous_version}"
                 ),
                 "cluster": cluster_name,
                 "service": service_name,
@@ -405,7 +407,8 @@ class ActionExecutor:
 
             return {
                 "message": (
-                    f"Lambda function {function_name} rolled back to version {previous_version}"
+                    f"Lambda function {function_name} rolled back to "
+                    f"version {previous_version}"
                 ),
                 "function_name": function_name,
                 "previous_version": previous_version
@@ -586,7 +589,8 @@ class ActionExecutor:
         # This would integrate with paging systems like PagerDuty
         return {
             "message": (
-                f"Incident {incident_id} escalated to {escalation_target}"
+                f"Incident {incident_id} escalated to "
+                f"{escalation_target}"
             ),
             "incident_id": incident_id,
             "reason": reason,
