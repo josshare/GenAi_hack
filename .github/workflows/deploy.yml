@@ -58,14 +58,47 @@ jobs:
         run: |
           python3 scripts/validate-config.py config/config.example.yaml --verbose || true
 
+      - name: Package and Upload Lambda Functions
+        run: |
+          STACK_NAME="${ENVIRONMENT}-ai-agent"
+          S3_BUCKET_NAME="${STACK_NAME}-deployment-artifacts"
+          # Package and upload incident-processor
+          cd src/functions/incident_processor
+          zip -r ../../../dist/incident-processor.zip .
+          cd -
+          aws s3 cp dist/incident-processor.zip s3://${S3_BUCKET_NAME}/incident-processor.zip
+          # Package and upload action-executor
+          cd src/functions/action_executor
+          zip -r ../../../dist/action-executor.zip .
+          cd -
+          aws s3 cp dist/action-executor.zip s3://${S3_BUCKET_NAME}/action-executor.zip
+
       - name: Deploy infrastructure (CloudFormation)
         run: |
           STACK_NAME="${ENVIRONMENT}-ai-agent"
+          S3_BUCKET_NAME="${STACK_NAME}-deployment-artifacts"
+          # Create S3 bucket for artifacts if it doesn't exist
+          if ! aws s3api head-bucket --bucket "$S3_BUCKET_NAME" 2>/dev/null; then
+            echo "Creating S3 bucket: $S3_BUCKET_NAME"
+            aws s3 mb "s3://$S3_BUCKET_NAME" --region "$AWS_REGION"
+          else
+            echo "S3 bucket $S3_BUCKET_NAME already exists"
+          fi
+          # Package and deploy using the composer template
+          aws cloudformation package \
+            --template-file infrastructure/composer.yaml \
+            --s3-bucket "$S3_BUCKET_NAME" \
+            --output-template-file infrastructure/packaged-composer.yaml
           aws cloudformation deploy \
             --stack-name "$STACK_NAME" \
-            --template-file infrastructure/stack.yaml \
+            --template-file infrastructure/packaged-composer.yaml \
             --capabilities CAPABILITY_NAMED_IAM \
-            --parameter-overrides Environment=${ENVIRONMENT} ProjectName=ai-agent
+            --parameter-overrides \
+              Environment=${ENVIRONMENT} \
+              ProjectName=ai-agent \
+              CodeS3Bucket=$S3_BUCKET_NAME \
+              CodeS3KeyIncident=incident-processor.zip \
+              CodeS3KeyAction=action-executor.zip
 
       - name: Export stack outputs
         run: |
@@ -76,11 +109,3 @@ jobs:
           m={o['OutputKey']:o['OutputValue'] for o in d};\
           json.dump(m, open('stack-outputs.json','w'));\
           print('Wrote stack-outputs.json with keys:', ', '.join(m.keys()))"
-
-      - name: Build and deploy Lambda functions
-        env:
-          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
-        run: |
-          node scripts/deploy.js --environment "$ENVIRONMENT" --region "$AWS_REGION"
-
-
