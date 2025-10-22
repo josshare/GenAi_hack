@@ -62,8 +62,10 @@ Resources:
                 Resource:
                   - Fn::GetAtt: [IncidentsTable, Arn]
                   - Fn::GetAtt: [ActionsTable, Arn]
+                  - Fn::GetAtt: [ContextTable, Arn]
                   - Fn::Sub: "${IncidentsTable.Arn}/index/*"
                   - Fn::Sub: "${ActionsTable.Arn}/index/*"
+                  - Fn::Sub: "${ContextTable.Arn}/index/*"
               - Effect: Allow
                 Action:
                   - cloudwatch:PutMetricData
@@ -194,6 +196,35 @@ Resources:
         - Key: Name
           Value:
             Fn::Sub: "${Environment}-${ProjectName}-actions"
+        - Key: Project
+          Value: AI-Agent
+        - Key: Environment
+          Value:
+            Ref: Environment
+
+  ContextTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName:
+        Fn::Sub: "${Environment}-${ProjectName}-context"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: context_id
+          AttributeType: S
+        - AttributeName: service
+          AttributeType: S
+      KeySchema:
+        - AttributeName: context_id
+          KeyType: HASH
+        - AttributeName: service
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: "${Environment}-${ProjectName}-context"
         - Key: Project
           Value: AI-Agent
         - Key: Environment
@@ -376,6 +407,10 @@ Outputs:
     Description: Name of the actions DynamoDB table
     Value:
       Ref: ActionsTable
+  ContextTableName:
+    Description: Name of the context DynamoDB table
+    Value:
+      Ref: ContextTable
   SnsAlertsTopicArn:
     Description: ARN of the SNS alerts topic
     Value:
