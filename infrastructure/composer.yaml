@@ -291,6 +291,8 @@ Resources:
 
   LambdaErrorAlarm:
     Type: AWS::CloudWatch::Alarm
+    DependsOn:
+      - IncidentProcessorFunction
     Properties:
       AlarmName:
         Fn::Sub: "${Environment}-${ProjectName}-lambda-errors"
@@ -311,6 +313,8 @@ Resources:
 
   LambdaDurationAlarm:
     Type: AWS::CloudWatch::Alarm
+    DependsOn:
+      - IncidentProcessorFunction
     Properties:
       AlarmName:
         Fn::Sub: "${Environment}-${ProjectName}-lambda-duration"
@@ -331,6 +335,8 @@ Resources:
 
   DynamoDBThrottleAlarm:
     Type: AWS::CloudWatch::Alarm
+    DependsOn:
+      - IncidentsTable
     Properties:
       AlarmName:
         Fn::Sub: "${Environment}-${ProjectName}-dynamodb-throttles"
@@ -374,4 +380,3 @@ Outputs:
     Description: ARN of the SNS alerts topic
     Value:
       Fn::GetAtt: [AlertsTopic, TopicArn]
-
