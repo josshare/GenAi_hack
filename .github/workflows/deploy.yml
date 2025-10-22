@@ -61,6 +61,15 @@ jobs:
       - name: Deploy infrastructure (CloudFormation)
         run: |
           STACK_NAME="${ENVIRONMENT}-ai-agent"
+          # Check if stack is in ROLLBACK_COMPLETE state, and delete it if so
+          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "STACK_DOES_NOT_EXIST")
+          if [ "$STACK_STATUS" == "ROLLBACK_COMPLETE" ]; then
+            echo "Stack $STACK_NAME is in ROLLBACK_COMPLETE state. Deleting stack..."
+            aws cloudformation delete-stack --stack-name "$STACK_NAME"
+            echo "Waiting for stack to be deleted..."
+            aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME"
+            echo "Stack $STACK_NAME deleted."
+          fi
           S3_BUCKET_NAME="${STACK_NAME}-deployment-artifacts"
           # Create S3 bucket for artifacts if it doesn't exist
           if ! aws s3api head-bucket --bucket "$S3_BUCKET_NAME" 2>/dev/null; then
