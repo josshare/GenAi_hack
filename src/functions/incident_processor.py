@@ -55,10 +55,12 @@ class IncidentProcessor:
             alarm_name = alarm_data.get('AlarmName', 'unknown')
             alarm_state = alarm_data.get('NewStateValue', 'UNKNOWN')
             # State change time retained in metrics; not used here
-            _alarm_reason = alarm_data.get('StateChangeTime', 'unknown')
+            _ = alarm_data.get('StateChangeTime', 'unknown')
 
-            self.logger.info(f"Processing CloudWatch alarm: {alarm_name}",
-                           alarm_state=alarm_state)
+            self.logger.info(
+                f"Processing CloudWatch alarm: {alarm_name}",
+                alarm_state=alarm_state,
+            )
 
             # Create incident from alarm
             incident = self._create_incident_from_alarm(alarm_data)
@@ -95,8 +97,11 @@ class IncidentProcessor:
             service = event_data.get('service', 'unknown')
             severity = event_data.get('severity', 'medium')
 
-            self.logger.info(f"Processing custom event: {event_type}",
-                           service=service, severity=severity)
+            self.logger.info(
+                f"Processing custom event: {event_type}",
+                service=service,
+                severity=severity,
+            )
 
             # Create incident from event
             incident = self._create_incident_from_event(event_data)
@@ -123,9 +128,9 @@ class IncidentProcessor:
                 "event_data": event_data,
             }
 
-    def _create_incident_from_alarm(self,
-        alarm_data: Dict[str,
-        Any]) -> Incident:
+    def _create_incident_from_alarm(
+        self, alarm_data: Dict[str, Any]
+    ) -> Incident:
         """Create an incident from CloudWatch alarm data."""
         alarm_name = alarm_data.get('AlarmName', 'unknown')
         alarm_state = alarm_data.get('NewStateValue', 'UNKNOWN')
@@ -137,7 +142,10 @@ class IncidentProcessor:
         service = self._extract_service_from_alarm_name(alarm_name)
 
         # Create incident description
-        description = f"CloudWatch alarm '{alarm_name}' changed state to '{alarm_state}'"
+        description = (
+            f"CloudWatch alarm '{alarm_name}' "
+            f"changed state to '{alarm_state}'"
+        )
 
         # Extract relevant metrics
         metrics = {
@@ -158,9 +166,9 @@ class IncidentProcessor:
             metrics=metrics
         )
 
-    def _create_incident_from_event(self,
-        event_data: Dict[str,
-        Any]) -> Incident:
+    def _create_incident_from_event(
+        self, event_data: Dict[str, Any]
+    ) -> Incident:
         """Create an incident from custom event data."""
         event_type = event_data.get('event_type', 'unknown')
         service = event_data.get('service', 'unknown')
@@ -173,15 +181,19 @@ class IncidentProcessor:
             severity = Severity.MEDIUM
 
         # Create incident description
-        description = event_data.get('description',
-            f"Custom event: {event_type}")
+        description = event_data.get(
+            'description', f"Custom event: {event_type}"
+        )
 
         # Use provided metrics or create default
-        metrics = event_data.get('metrics', {
-            "event_type": event_type,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-                "source": "custom_event"
-        })
+        metrics = event_data.get(
+            'metrics',
+            {
+                "event_type": event_type,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "source": "custom_event",
+            },
+        )
 
         return Incident(
             id=f"incident-{int(time.time())}-{event_type}",
@@ -191,9 +203,9 @@ class IncidentProcessor:
             metrics=metrics
         )
 
-    def _determine_severity_from_alarm(self,
-        alarm_name: str,
-        alarm_state: str) -> Severity:
+    def _determine_severity_from_alarm(
+        self, alarm_name: str, alarm_state: str
+    ) -> Severity:
         """Determine incident severity from alarm name and state."""
         if alarm_state != 'ALARM':
             return Severity.LOW
@@ -229,14 +241,17 @@ class IncidentProcessor:
                 Item={
                     'incident_id': incident.id,
                     'timestamp': incident.timestamp.isoformat(),
-                        'severity': incident.severity.value,
+                    'severity': incident.severity.value,
                     'description': incident.description,
                     'service': incident.service,
                     'metrics': incident.metrics,
                     'status': incident.status,
                     'actions_taken': incident.actions_taken,
-                    'resolved_at': incident.resolved_at.isoformat() if incident.resolved_at else None,
-                        'ttl': int((datetime.now(timezone.utc).timestamp() + 86400 * 30))  # 30 days TTL
+                    'resolved_at': (
+                        incident.resolved_at.isoformat() if incident.resolved_at else None
+                    ),
+                    # 30 days TTL
+                    'ttl': int((datetime.now(timezone.utc).timestamp() + 86400 * 30)),
                 }
             )
 
@@ -246,9 +261,9 @@ class IncidentProcessor:
             self.logger.error(f"Failed to store incident: {str(e)}")
             raise
 
-    def _process_incident_with_agent(self,
-        incident: Incident) -> Dict[str,
-        Any]:
+    def _process_incident_with_agent(
+        self, incident: Incident
+    ) -> Dict[str, Any]:
         """Process incident using the Bedrock agent."""
         try:
             # Process incident with agent
@@ -269,8 +284,10 @@ class IncidentProcessor:
                 metrics={
                     "incident_processed": 1.0,
                     "action_taken": 1.0 if result.get("action_taken") else 0.0,
-                        "escalated": 1.0 if result.get("action_taken") == "escalate" else 0.0
-                }
+                    "escalated": (
+                        1.0 if result.get("action_taken") == "escalate" else 0.0
+                    ),
+                },
             )
 
             return result
@@ -285,30 +302,28 @@ class IncidentProcessor:
                 "result": {
                     "success": False,
                     "error": str(e),
-                        "escalation_reason": "Agent processing failed"
-                }
+                    "escalation_reason": "Agent processing failed",
+                },
             }
 
-    def _store_action(self,
-        incident: Incident,
-        result: Dict[str,
-        Any]) -> None:
+    def _store_action(
+        self, incident: Incident, result: Dict[str, Any]
+    ) -> None:
         """Store action in DynamoDB."""
         try:
             action_data = result.get("result", {})
 
             action_item = {
                 'action_id': f"action-{incident.id}-{int(time.time())}",
-                    'incident_id': incident.id,
+                'incident_id': incident.id,
                 'action_type': result.get("action_taken"),
-                    'target': incident.service,
+                'target': incident.service,
                 'parameters': action_data.get("parameters", {}),
-                    'status': "pending",
-                'confidence': result.get("analysis",
-                    {}).get("confidence",
-                    0.0),
+                'status': "pending",
+                'confidence': result.get("analysis", {}).get("confidence", 0.0),
                 'created_at': datetime.now(timezone.utc).isoformat(),
-                    'ttl': int((datetime.now(timezone.utc).timestamp() + 86400 * 30))  # 30 days TTL
+                # 30 days TTL
+                'ttl': int((datetime.now(timezone.utc).timestamp() + 86400 * 30)),
             }
 
             self.actions_table.put_item(Item=action_item)
@@ -318,10 +333,9 @@ class IncidentProcessor:
         except Exception as e:
             self.logger.error(f"Failed to store action: {str(e)}")
 
-    def _update_incident_status(self,
-        incident: Incident,
-        result: Dict[str,
-        Any]) -> None:
+    def _update_incident_status(
+        self, incident: Incident, result: Dict[str, Any]
+    ) -> None:
         """Update incident status in DynamoDB."""
         try:
             # Determine new status based on result
@@ -354,23 +368,24 @@ class IncidentProcessor:
         except Exception as e:
             self.logger.error(f"Failed to update incident status: {str(e)}")
 
-    def get_incident_history(self,
-        service: str,
-        hours_back: int = 24) -> List[Dict[str,
-        Any]]:
+    def get_incident_history(
+        self, service: str, hours_back: int = 24
+    ) -> List[Dict[str, Any]]:
         """Get incident history for a service."""
         try:
             end_time = datetime.now(timezone.utc)
             start_time = end_time - timedelta(hours=hours_back)
 
-            _ = self.incidents_table.scan(
-                FilterExpression='service = :service AND #timestamp BETWEEN :start_time AND :end_time',
+            response = self.incidents_table.scan(
+                FilterExpression=(
+                    'service = :service AND #timestamp BETWEEN :start_time AND :end_time'
+                ),
                 ExpressionAttributeNames={'#timestamp': 'timestamp'},
                 ExpressionAttributeValues={
                     ':service': service,
                     ':start_time': start_time.isoformat(),
-                        ':end_time': end_time.isoformat()
-                }
+                    ':end_time': end_time.isoformat(),
+                },
             )
 
             return response.get('Items', [])
@@ -379,15 +394,18 @@ class IncidentProcessor:
             self.logger.error(f"Failed to get incident history: {str(e)}")
             return []
 
-    def resolve_incident(self,
-        incident_id: str,
-        resolution_notes: str = "") -> Dict[str,
-        Any]:
+    def resolve_incident(
+        self, incident_id: str, resolution_notes: str = ""
+    ) -> Dict[str, Any]:
         """Manually resolve an incident."""
         try:
             self.incidents_table.update_item(
                 Key={'incident_id': incident_id},
-                UpdateExpression='SET #status = :status, #resolved_at = :resolved_at, #resolution_notes = :notes',
+                UpdateExpression=(
+                    'SET #status = :status, '
+                    '#resolved_at = :resolved_at, '
+                    '#resolution_notes = :notes'
+                ),
                 ExpressionAttributeNames={
                     '#status': 'status',
                     '#resolved_at': 'resolved_at',
@@ -396,7 +414,7 @@ class IncidentProcessor:
                 ExpressionAttributeValues={
                     ':status': 'resolved',
                     ':resolved_at': datetime.now(timezone.utc).isoformat(),
-                        ':notes': resolution_notes
+                    ':notes': resolution_notes,
                 }
             )
 

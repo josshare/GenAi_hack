@@ -126,7 +126,9 @@ class ActionExecutor:
         service_name = action.parameters.get("service_name")
 
         if not cluster_name or not service_name:
-            raise ValueError("cluster_name and service_name are required for ECS restart")
+            raise ValueError(
+                "cluster_name and service_name are required for ECS restart"
+            )
 
         try:
             # Force new deployment
@@ -169,7 +171,10 @@ class ActionExecutor:
             raise Exception(f"Failed to restart EC2 instance: {str(e)}")
 
     def _restart_lambda_function(self, action: Action) -> Dict[str, Any]:
-        """Restart a Lambda function (update environment variables to force restart)."""
+        """Restart a Lambda function.
+
+        Update environment variables to force restart.
+        """
         function_name = action.parameters.get("function_name")
 
         if not function_name:
@@ -194,7 +199,9 @@ class ActionExecutor:
             )
 
             return {
-                "message": f"Lambda function {function_name} restart initiated",
+                "message": (
+                    f"Lambda function {function_name} restart initiated"
+                ),
                 "function_name": function_name
             }
 
@@ -234,7 +241,9 @@ class ActionExecutor:
             )
 
             return {
-                "message": f"Auto Scaling Group {asg_name} scaled to {target_capacity}",
+                "message": (
+                    f"Auto Scaling Group {asg_name} scaled to {target_capacity}"
+                ),
                 "asg_name": asg_name,
                 "desired_capacity": target_capacity
             }
@@ -250,7 +259,9 @@ class ActionExecutor:
         service_name = action.parameters.get("service_name")
 
         if not cluster_name or not service_name:
-            raise ValueError("cluster_name and service_name are required for ECS scaling")
+            raise ValueError(
+                "cluster_name and service_name are required for ECS scaling"
+            )
 
         if target_capacity is None:
             target_capacity = action.parameters.get("current_capacity", 2) + 1
@@ -263,7 +274,9 @@ class ActionExecutor:
             )
 
             return {
-                "message": f"ECS service {service_name} scaled to {target_capacity}",
+                "message": (
+                    f"ECS service {service_name} scaled to {target_capacity}"
+                ),
                 "cluster": cluster_name,
                 "service": service_name,
                 "desired_count": target_capacity
@@ -307,7 +320,9 @@ class ActionExecutor:
         service_name = action.parameters.get("service_name")
 
         if not cluster_name or not service_name:
-            raise ValueError("cluster_name and service_name are required for ECS rollback")
+            raise ValueError(
+                "cluster_name and service_name are required for ECS rollback"
+            )
 
         if not previous_version:
             # Get previous task definition
@@ -345,7 +360,9 @@ class ActionExecutor:
             )
 
             return {
-                "message": f"ECS service {service_name} rolled back to {previous_version}",
+                "message": (
+                    f"ECS service {service_name} rolled back to {previous_version}"
+                ),
                 "cluster": cluster_name,
                 "service": service_name,
                 "previous_task_definition": previous_version
@@ -369,7 +386,11 @@ class ActionExecutor:
                 FunctionName=function_name
             )
 
-            versions = [v['Version'] for v in response['Versions'] if v['Version'] != '$LATEST']
+            versions = [
+                v["Version"]
+                for v in response["Versions"]
+                if v["Version"] != "$LATEST"
+            ]
             if versions:
                 previous_version = versions[-1]
             else:
@@ -383,7 +404,9 @@ class ActionExecutor:
             )
 
             return {
-                "message": f"Lambda function {function_name} rolled back to version {previous_version}",
+                "message": (
+                    f"Lambda function {function_name} rolled back to version {previous_version}"
+                ),
                 "function_name": function_name,
                 "previous_version": previous_version
             }
@@ -408,7 +431,9 @@ class ActionExecutor:
         cache_cluster_id = action.parameters.get("cache_cluster_id")
 
         if not cache_cluster_id:
-            raise ValueError("cache_cluster_id is required for ElastiCache flush")
+            raise ValueError(
+                "cache_cluster_id is required for ElastiCache flush"
+            )
 
         try:
             # For Redis, we would use the redis-py client to flush
@@ -419,7 +444,9 @@ class ActionExecutor:
             )
 
             return {
-                "message": f"ElastiCache cluster {cache_cluster_id} cache cleared",
+                "message": (
+                    f"ElastiCache cluster {cache_cluster_id} cache cleared"
+                ),
                 "cache_cluster_id": cache_cluster_id
             }
 
@@ -432,7 +459,9 @@ class ActionExecutor:
         paths = action.parameters.get("paths", ["/*"])
 
         if not distribution_id:
-            raise ValueError("distribution_id is required for CloudFront invalidation")
+            raise ValueError(
+                "distribution_id is required for CloudFront invalidation"
+            )
 
         try:
             cloudfront_client = boto3.client('cloudfront')
@@ -510,7 +539,9 @@ class ActionExecutor:
             "message": f"Report generated for incident {incident_id}",
             "incident_id": incident_id,
             "report_type": report_type,
-            "report_url": f"s3://{config.s3.artifacts_bucket}/reports/{incident_id}.pdf"
+            "report_url": (
+                f"s3://{config.s3.artifacts_bucket}/reports/{incident_id}.pdf"
+            ),
         }
 
     @tracer.capture_method
@@ -554,7 +585,9 @@ class ActionExecutor:
 
         # This would integrate with paging systems like PagerDuty
         return {
-            "message": f"Incident {incident_id} escalated to {escalation_target}",
+            "message": (
+                f"Incident {incident_id} escalated to {escalation_target}"
+            ),
             "incident_id": incident_id,
             "reason": reason,
             "escalation_target": escalation_target
@@ -564,10 +597,10 @@ class ActionExecutor:
 # Lambda handler
 @logger.inject_lambda_context
 @tracer.capture_lambda_handler
-def lambda_handler(event: Dict[str,
-    Any],
-    context: LambdaContext) -> Dict[str,
-    Any]:
+def lambda_handler(
+    event: Dict[str, Any],
+    context: LambdaContext,
+) -> Dict[str, Any]:
     """Main Lambda handler for action execution."""
     lambda_logger.log_event(event, context)
 
