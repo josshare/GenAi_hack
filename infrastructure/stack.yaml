@@ -10,6 +10,10 @@ Parameters:
     Type: String
     Default: ai-agent
     Description: Project name
+  GitHubRepo:
+    Type: String
+    Default: "josshare/GenAi_hack"
+    Description: "GitHub repository in owner/repo format"
   LogRetentionDays:
     Type: Number
     Default: 14
@@ -18,6 +22,45 @@ Parameters:
 Mappings: {}
 
 Resources:
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: "${Environment}-${ProjectName}-github-actions-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated:
+                Fn::Sub: "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+            Action: "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals:
+                "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+              StringLike:
+                "token.actions.githubusercontent.com:sub":
+                  Fn::Sub: "repo:${GitHubRepo}:*"
+      Policies:
+        - PolicyName:
+            Fn::Sub: "${Environment}-${ProjectName}-github-actions-policy"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "cloudformation:*"
+                  - "s3:*"
+                  - "iam:PassRole"
+                Resource: "*"
+      Tags:
+        - Key: Project
+          Value:
+            Ref: ProjectName
+        - Key: Environment
+          Value:
+            Ref: Environment
+
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -372,6 +415,14 @@ Resources:
       State: ENABLED
 
 Outputs:
+  GitHubActionsRoleArn:
+    Description: ARN of the GitHub Actions deployment role
+    Value:
+      Fn::GetAtt: [GitHubActionsRole, Arn]
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}:GitHubActionsRoleArn"
+
   LambdaExecutionRoleArn:
     Description: ARN of the Lambda execution role
     Value:
@@ -411,4 +462,3 @@ Outputs:
     Description: CloudWatch alarm name for DynamoDB throttles
     Value:
       Ref: DynamoDBThrottleAlarm
-

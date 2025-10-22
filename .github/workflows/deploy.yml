@@ -28,12 +28,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
-
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -48,6 +42,30 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+
+      - name: Configure AWS Bootstrap Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_BOOTSTRAP_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Bootstrap AWS Environment
+        run: |
+          aws cloudformation deploy \
+            --stack-name "${{ env.ENVIRONMENT }}-ai-agent-bootstrap" \
+            --template-file infrastructure/stack.yaml \
+            --parameter-overrides \
+              Environment=${{ env.ENVIRONMENT }} \
+              ProjectName=ai-agent \
+              GitHubRepo=${{ github.repository }} \
+            --capabilities CAPABILITY_NAMED_IAM
+          echo "GHA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name "${{ env.ENVIRONMENT }}-ai-agent-bootstrap" --query "Stacks[0].Outputs[?OutputKey=='GitHubActionsRoleArn'].OutputValue" --output text)" >> $GITHUB_ENV
+
+      - name: Configure AWS Deployment Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.GHA_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Install deps (npm)
         run: npm ci
