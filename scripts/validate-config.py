@@ -321,7 +321,7 @@ class ConfigValidator:
             # Test CloudWatch access
             try:
                 cloudwatch = boto3.client("cloudwatch")
-                cloudwatch.list_metrics(MaxRecords=1)
+                cloudwatch.list_metrics()
                 logger.info("CloudWatch access validated")
             except Exception as e:
                 self.result.add_warning(f"CloudWatch access may be limited: {e}")
