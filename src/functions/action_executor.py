@@ -18,13 +18,13 @@ logger = Logger(service="action-executor")
 tracer = Tracer(service="action-executor")
 
 # Initialize AWS clients
-ecs_client = boto3.client('ecs')
-ec2_client = boto3.client('ec2')
-autoscaling_client = boto3.client('autoscaling')
-elasticloadbalancing_client = boto3.client('elbv2')
-rds_client = boto3.client('rds')
-elasticache_client = boto3.client('elasticache')
-lambda_client = boto3.client('lambda')
+ecs_client = boto3.client("ecs")
+ec2_client = boto3.client("ec2")
+autoscaling_client = boto3.client("autoscaling")
+elasticloadbalancing_client = boto3.client("elbv2")
+rds_client = boto3.client("rds")
+elasticache_client = boto3.client("elasticache")
+lambda_client = boto3.client("lambda")
 
 # Get configuration
 config = get_config()
@@ -77,10 +77,7 @@ class ActionExecutor:
                 action=action.action_type.value,
                 target=action.target,
                 status="completed",
-                details={
-                    "duration": duration,
-                    "result": result
-                }
+                details={"duration": duration, "result": result},
             )
 
             return {
@@ -89,7 +86,7 @@ class ActionExecutor:
                 "action_type": action.action_type.value,
                 "duration": duration,
                 "result": result,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
         except Exception as e:
@@ -133,15 +130,11 @@ class ActionExecutor:
         try:
             # Force new deployment
             _ = ecs_client.update_service(
-                cluster=cluster_name,
-                service=service_name,
-                forceNewDeployment=True
+                cluster=cluster_name, service=service_name, forceNewDeployment=True
             )
 
             return {
-                "message": (
-                    f"ECS service {service_name} restart initiated"
-                ),
+                "message": (f"ECS service {service_name} restart initiated"),
                 "cluster": cluster_name,
                 "service": service_name,
             }
@@ -158,13 +151,11 @@ class ActionExecutor:
 
         try:
             # Reboot the instance
-            _ = ec2_client.reboot_instances(
-                InstanceIds=[instance_id]
-            )
+            _ = ec2_client.reboot_instances(InstanceIds=[instance_id])
 
             return {
                 "message": f"EC2 instance {instance_id} restart initiated",
-                "instance_id": instance_id
+                "instance_id": instance_id,
             }
 
         except Exception as e:
@@ -187,22 +178,16 @@ class ActionExecutor:
             )
 
             # Update environment variables to force restart
-            current_env = (
-                current_config.get("Environment", {})
-                .get("Variables", {})
-            )
-            current_env['_restart_trigger'] = str(int(time.time()))
+            current_env = current_config.get("Environment", {}).get("Variables", {})
+            current_env["_restart_trigger"] = str(int(time.time()))
 
             lambda_client.update_function_configuration(
-                FunctionName=function_name,
-                Environment={'Variables': current_env}
+                FunctionName=function_name, Environment={"Variables": current_env}
             )
 
             return {
-                "message": (
-                    f"Lambda function {function_name} restart initiated"
-                ),
-                "function_name": function_name
+                "message": (f"Lambda function {function_name} restart initiated"),
+                "function_name": function_name,
             }
 
         except Exception as e:
@@ -237,16 +222,15 @@ class ActionExecutor:
             _ = autoscaling_client.set_desired_capacity(
                 AutoScalingGroupName=asg_name,
                 DesiredCapacity=target_capacity,
-                HonorCooldown=False
+                HonorCooldown=False,
             )
 
             return {
                 "message": (
-                    f"Auto Scaling Group {asg_name} scaled "
-                    f"to {target_capacity}"
+                    f"Auto Scaling Group {asg_name} scaled " f"to {target_capacity}"
                 ),
                 "asg_name": asg_name,
-                "desired_capacity": target_capacity
+                "desired_capacity": target_capacity,
             }
 
         except Exception as e:
@@ -269,18 +253,14 @@ class ActionExecutor:
 
         try:
             _ = ecs_client.update_service(
-                cluster=cluster_name,
-                service=service_name,
-                desiredCount=target_capacity
+                cluster=cluster_name, service=service_name, desiredCount=target_capacity
             )
 
             return {
-                "message": (
-                    f"ECS service {service_name} scaled to {target_capacity}"
-                ),
+                "message": (f"ECS service {service_name} scaled to {target_capacity}"),
                 "cluster": cluster_name,
                 "service": service_name,
-                "desired_count": target_capacity
+                "desired_count": target_capacity,
             }
 
         except Exception as e:
@@ -328,27 +308,24 @@ class ActionExecutor:
         if not previous_version:
             # Get previous task definition
             response = ecs_client.describe_services(
-                cluster=cluster_name,
-                services=[service_name]
+                cluster=cluster_name, services=[service_name]
             )
 
-            service = response['services'][0]
-            current_task_def = service['taskDefinition']
+            service = response["services"][0]
+            current_task_def = service["taskDefinition"]
 
             # Get task definition revisions
             task_def_response = ecs_client.describe_task_definition(
                 taskDefinition=current_task_def
             )
 
-            family = task_def_response['taskDefinition']['family']
+            family = task_def_response["taskDefinition"]["family"]
             revisions = ecs_client.list_task_definitions(
-                familyPrefix=family,
-                status='ACTIVE',
-                sort='DESC'
+                familyPrefix=family, status="ACTIVE", sort="DESC"
             )
 
-            if len(revisions['taskDefinitionArns']) > 1:
-                previous_version = revisions['taskDefinitionArns'][1]
+            if len(revisions["taskDefinitionArns"]) > 1:
+                previous_version = revisions["taskDefinitionArns"][1]
             else:
                 raise ValueError("No previous version found for rollback")
 
@@ -357,17 +334,16 @@ class ActionExecutor:
                 cluster=cluster_name,
                 service=service_name,
                 taskDefinition=previous_version,
-                forceNewDeployment=True
+                forceNewDeployment=True,
             )
 
             return {
                 "message": (
-                    f"ECS service {service_name} rolled back to "
-                    f"{previous_version}"
+                    f"ECS service {service_name} rolled back to " f"{previous_version}"
                 ),
                 "cluster": cluster_name,
                 "service": service_name,
-                "previous_task_definition": previous_version
+                "previous_task_definition": previous_version,
             }
 
         except Exception as e:
@@ -389,9 +365,7 @@ class ActionExecutor:
             )
 
             versions = [
-                v["Version"]
-                for v in response["Versions"]
-                if v["Version"] != "$LATEST"
+                v["Version"] for v in response["Versions"] if v["Version"] != "$LATEST"
             ]
             if versions:
                 previous_version = versions[-1]
@@ -401,8 +375,8 @@ class ActionExecutor:
         try:
             _ = lambda_client.update_alias(
                 FunctionName=function_name,
-                Name='LIVE',
-                FunctionVersion=previous_version
+                Name="LIVE",
+                FunctionVersion=previous_version,
             )
 
             return {
@@ -411,7 +385,7 @@ class ActionExecutor:
                     f"version {previous_version}"
                 ),
                 "function_name": function_name,
-                "previous_version": previous_version
+                "previous_version": previous_version,
             }
 
         except Exception as e:
@@ -434,23 +408,18 @@ class ActionExecutor:
         cache_cluster_id = action.parameters.get("cache_cluster_id")
 
         if not cache_cluster_id:
-            raise ValueError(
-                "cache_cluster_id is required for ElastiCache flush"
-            )
+            raise ValueError("cache_cluster_id is required for ElastiCache flush")
 
         try:
             # For Redis, we would use the redis-py client to flush
             # For Memcached, we would use boto3 to restart the cluster
             _ = elasticache_client.reboot_cache_cluster(
-                CacheClusterId=cache_cluster_id,
-                CacheNodeIdsToReboot=['0001']
+                CacheClusterId=cache_cluster_id, CacheNodeIdsToReboot=["0001"]
             )
 
             return {
-                "message": (
-                    f"ElastiCache cluster {cache_cluster_id} cache cleared"
-                ),
-                "cache_cluster_id": cache_cluster_id
+                "message": (f"ElastiCache cluster {cache_cluster_id} cache cleared"),
+                "cache_cluster_id": cache_cluster_id,
             }
 
         except Exception as e:
@@ -462,31 +431,27 @@ class ActionExecutor:
         paths = action.parameters.get("paths", ["/*"])
 
         if not distribution_id:
-            raise ValueError(
-                "distribution_id is required for CloudFront invalidation"
-            )
+            raise ValueError("distribution_id is required for CloudFront invalidation")
 
         try:
-            cloudfront_client = boto3.client('cloudfront')
+            cloudfront_client = boto3.client("cloudfront")
 
             response = cloudfront_client.create_invalidation(
                 DistributionId=distribution_id,
                 InvalidationBatch={
-                    'Paths': {
-                        'Quantity': len(paths),
-                        'Items': paths,
+                    "Paths": {
+                        "Quantity": len(paths),
+                        "Items": paths,
                     },
-                    'CallerReference': f"devops-ai-{int(time.time())}"
-                }
+                    "CallerReference": f"devops-ai-{int(time.time())}",
+                },
             )
 
             return {
-                "message": (
-                    f"CloudFront distribution {distribution_id} cache cleared"
-                ),
+                "message": (f"CloudFront distribution {distribution_id} cache cleared"),
                 "distribution_id": distribution_id,
-                "invalidation_id": response['Invalidation']['Id'],
-                "paths": paths
+                "invalidation_id": response["Invalidation"]["Id"],
+                "paths": paths,
             }
 
         except Exception as e:
@@ -512,16 +477,13 @@ class ActionExecutor:
         """Restart an RDS instance."""
         try:
             response = rds_client.reboot_db_instance(
-                DBInstanceIdentifier=db_identifier,
-                ForceFailover=False
+                DBInstanceIdentifier=db_identifier, ForceFailover=False
             )
 
             return {
-                "message": (
-                    f"RDS instance {db_identifier} restart initiated"
-                ),
+                "message": (f"RDS instance {db_identifier} restart initiated"),
                 "db_identifier": db_identifier,
-                "status": response['DBInstance']['DBInstanceStatus']
+                "status": response["DBInstance"]["DBInstanceStatus"],
             }
 
         except Exception as e:
@@ -550,15 +512,13 @@ class ActionExecutor:
     @tracer.capture_method
     def _optimize_cost(self, action: Action) -> Dict[str, Any]:
         """Optimize costs."""
-        optimization_type = action.parameters.get(
-            "optimization_type", "general"
-        )
+        optimization_type = action.parameters.get("optimization_type", "general")
 
         # This would integrate with cost optimization services
         return {
             "message": f"Cost optimization applied: {optimization_type}",
             "optimization_type": optimization_type,
-            "estimated_savings": action.parameters.get("estimated_savings", 0)
+            "estimated_savings": action.parameters.get("estimated_savings", 0),
         }
 
     @tracer.capture_method
@@ -574,7 +534,7 @@ class ActionExecutor:
         return {
             "message": "Team notification sent",
             "channels": channels,
-            "notification_content": message
+            "notification_content": message,
         }
 
     @tracer.capture_method
@@ -588,13 +548,10 @@ class ActionExecutor:
 
         # This would integrate with paging systems like PagerDuty
         return {
-            "message": (
-                f"Incident {incident_id} escalated to "
-                f"{escalation_target}"
-            ),
+            "message": (f"Incident {incident_id} escalated to " f"{escalation_target}"),
             "incident_id": incident_id,
             "reason": reason,
-            "escalation_target": escalation_target
+            "escalation_target": escalation_target,
         }
 
 
@@ -622,18 +579,12 @@ def lambda_handler(
 
         lambda_logger.log_response(result)
 
-        return {
-            "statusCode": 200,
-            "body": json.dumps(result)
-        }
+        return {"statusCode": 200, "body": json.dumps(result)}
 
     except Exception as e:
         lambda_logger.log_error(e, context)
 
         return {
             "statusCode": 500,
-            "body": json.dumps({
-                "success": False,
-                "error": str(e)
-            })
+            "body": json.dumps({"success": False, "error": str(e)}),
         }

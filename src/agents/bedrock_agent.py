@@ -16,6 +16,7 @@ from ..utils.logger import get_agent_logger
 
 class ActionType(str, Enum):
     """Types of actions the agent can take."""
+
     RESTART_SERVICE = "restart_service"
     SCALE_UP = "scale_up"
     SCALE_DOWN = "scale_down"
@@ -30,6 +31,7 @@ class ActionType(str, Enum):
 
 class Severity(str, Enum):
     """Incident severity levels."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -38,22 +40,17 @@ class Severity(str, Enum):
 
 class Incident(BaseModel):
     """Incident model."""
+
     id: str = Field(description="Unique incident identifier")
-    timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     severity: Severity = Field(description="Incident severity level")
-    description: str = Field(
-        description="Human-readable incident description"
-    )
+    description: str = Field(description="Human-readable incident description")
     service: str = Field(description="Affected service or resource")
     metrics: Dict[str, Any] = Field(
         default_factory=dict, description="Relevant metrics"
     )
     status: str = Field(default="open", description="Incident status")
-    actions_taken: List[str] = Field(
-        default_factory=list, description="Actions taken"
-    )
+    actions_taken: List[str] = Field(default_factory=list, description="Actions taken")
     resolved_at: Optional[datetime] = Field(
         default=None, description="Resolution timestamp"
     )
@@ -61,6 +58,7 @@ class Incident(BaseModel):
 
 class Action(BaseModel):
     """Action model."""
+
     id: str = Field(description="Unique action identifier")
     incident_id: str = Field(description="Associated incident ID")
     action_type: ActionType = Field(description="Type of action")
@@ -69,22 +67,17 @@ class Action(BaseModel):
         default_factory=dict, description="Action parameters"
     )
     status: str = Field(default="pending", description="Action status")
-    confidence: float = Field(
-        ge=0.0, le=1.0, description="Confidence score"
-    )
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence score")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     executed_at: Optional[datetime] = Field(
         default=None, description="Execution timestamp"
     )
-    result: Optional[Dict[str, Any]] = Field(
-        default=None, description="Action result"
-    )
+    result: Optional[Dict[str, Any]] = Field(default=None, description="Action result")
 
 
 class DecisionContext(BaseModel):
     """Context for decision making."""
+
     incident: Incident = Field(description="Current incident")
     historical_data: Dict[str, Any] = Field(
         default_factory=dict, description="Historical context"
@@ -92,9 +85,7 @@ class DecisionContext(BaseModel):
     current_metrics: Dict[str, Any] = Field(
         default_factory=dict, description="Current system metrics"
     )
-    available_actions: List[ActionType] = Field(
-        description="Available action types"
-    )
+    available_actions: List[ActionType] = Field(description="Available action types")
     constraints: Dict[str, Any] = Field(
         default_factory=dict, description="System constraints"
     )
@@ -110,20 +101,13 @@ class BedrockAgent:
 
         # Initialize Bedrock client
         self.bedrock_client = boto3.client(
-            'bedrock-runtime',
-            region_name=self.config.aws.region
+            "bedrock-runtime", region_name=self.config.aws.region
         )
 
         # Initialize other AWS services
-        self.cloudwatch = boto3.client(
-            'cloudwatch', region_name=self.config.aws.region
-        )
-        self.dynamodb = boto3.resource(
-            'dynamodb', region_name=self.config.aws.region
-        )
-        self.lambda_client = boto3.client(
-            'lambda', region_name=self.config.aws.region
-        )
+        self.cloudwatch = boto3.client("cloudwatch", region_name=self.config.aws.region)
+        self.dynamodb = boto3.resource("dynamodb", region_name=self.config.aws.region)
+        self.lambda_client = boto3.client("lambda", region_name=self.config.aws.region)
 
         # Load agent instructions
         self.instructions = self._load_agent_instructions()
@@ -177,24 +161,27 @@ class BedrockAgent:
         }
         """
 
-    @retry(stop=stop_after_attempt(3),
-           wait=wait_exponential(multiplier=1, min=4, max=10))
+    @retry(
+        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10)
+    )
     def _invoke_bedrock(self, messages: List[Dict[str, str]]) -> str:
         """Invoke Bedrock model with retry logic."""
         try:
             response = self.bedrock_client.invoke_model(
                 modelId=self.config.bedrock.model_id,
-                body=json.dumps({
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": self.config.bedrock.max_tokens,
-                    "temperature": self.config.bedrock.temperature,
-                    "messages": messages
-                }),
-                contentType="application/json"
+                body=json.dumps(
+                    {
+                        "anthropic_version": "bedrock-2023-05-31",
+                        "max_tokens": self.config.bedrock.max_tokens,
+                        "temperature": self.config.bedrock.temperature,
+                        "messages": messages,
+                    }
+                ),
+                contentType="application/json",
             )
 
-            response_body = json.loads(response['body'].read())
-            return response_body['content'][0]['text']
+            response_body = json.loads(response["body"].read())
+            return response_body["content"][0]["text"]
 
         except ClientError as e:
             self.logger.error(f"Bedrock invocation failed: {str(e)}")
@@ -202,9 +189,11 @@ class BedrockAgent:
 
     def analyze_incident(self, incident: Incident) -> Dict[str, Any]:
         """Analyze an incident and determine the best course of action."""
-        self.logger.info(f"Analyzing incident {incident.id}",
-                         incident_id=incident.id,
-                         severity=incident.severity.value)
+        self.logger.info(
+            f"Analyzing incident {incident.id}",
+            incident_id=incident.id,
+            severity=incident.severity.value,
+        )
 
         # Prepare context for analysis
         context = DecisionContext(
@@ -212,7 +201,7 @@ class BedrockAgent:
             historical_data=self._get_historical_data(incident.service),
             current_metrics=self._get_current_metrics(incident.service),
             available_actions=[action for action in ActionType],
-            constraints=self._get_system_constraints()
+            constraints=self._get_system_constraints(),
         )
 
         # Create analysis prompt
@@ -248,12 +237,7 @@ class BedrockAgent:
         format.
         """
 
-        messages = [
-            {
-                "role": "user",
-                "content": f"{self.instructions}\n\n{prompt}"
-            }
-        ]
+        messages = [{"role": "user", "content": f"{self.instructions}\n\n{prompt}"}]
 
         try:
             response = self._invoke_bedrock(messages)
@@ -265,23 +249,21 @@ class BedrockAgent:
                 context={
                     "incident_id": incident.id,
                     "reasoning": analysis.get("reasoning", ""),
-                    "escalate": analysis.get("escalate", False)
-                }
+                    "escalate": analysis.get("escalate", False),
+                },
             )
 
             return analysis
 
         except Exception as e:
-            self.logger.error(
-                f"Failed to analyze incident {incident.id}: {str(e)}"
-            )
+            self.logger.error(f"Failed to analyze incident {incident.id}: {str(e)}")
             # Fallback to escalation
             return {
                 "action": "escalate",
                 "confidence": 0.0,
                 "reasoning": f"Analysis failed: {str(e)}",
                 "escalate": True,
-                "escalation_reason": "Agent analysis failed"
+                "escalation_reason": "Agent analysis failed",
             }
 
     def execute_action(self, action: Action) -> Dict[str, Any]:
@@ -300,32 +282,24 @@ class BedrockAgent:
             result = self._execute_specific_action(action)
 
             # Update action status
-            action.status = (
-                "completed" if result.get("success", False) else "failed"
-            )
+            action.status = "completed" if result.get("success", False) else "failed"
             action.result = result
 
             self.logger.log_action(
                 action=action.action_type.value,
                 target=action.target,
                 status=action.status,
-                details=result
+                details=result,
             )
 
             return result
 
         except Exception as e:
-            self.logger.error(
-                f"Failed to execute action {action.id}: {str(e)}"
-            )
+            self.logger.error(f"Failed to execute action {action.id}: {str(e)}")
             action.status = "failed"
             action.result = {"success": False, "error": str(e)}
 
-            return {
-                "success": False,
-                "error": str(e),
-                "action_id": action.id
-            }
+            return {"success": False, "error": str(e), "action_id": action.id}
 
     def _execute_specific_action(self, action: Action) -> Dict[str, Any]:
         """Execute a specific action type."""
@@ -361,7 +335,7 @@ class BedrockAgent:
         return {
             "success": True,
             "message": f"Service {action.target} restarted successfully",
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _scale_up(self, action: Action) -> Dict[str, Any]:
@@ -371,7 +345,7 @@ class BedrockAgent:
             "success": True,
             "message": f"Service {action.target} scaled up",
             "new_capacity": action.parameters.get("desired_capacity", 1),
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _scale_down(self, action: Action) -> Dict[str, Any]:
@@ -380,7 +354,7 @@ class BedrockAgent:
             "success": True,
             "message": f"Service {action.target} scaled down",
             "new_capacity": action.parameters.get("desired_capacity", 1),
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _rollback_deployment(self, action: Action) -> Dict[str, Any]:
@@ -388,10 +362,8 @@ class BedrockAgent:
         return {
             "success": True,
             "message": f"Deployment rolled back for {action.target}",
-            "previous_version": action.parameters.get(
-                "previous_version", "unknown"
-            ),
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "previous_version": action.parameters.get("previous_version", "unknown"),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _clear_cache(self, action: Action) -> Dict[str, Any]:
@@ -399,7 +371,7 @@ class BedrockAgent:
         return {
             "success": True,
             "message": f"Cache cleared for {action.target}",
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _restart_database(self, action: Action) -> Dict[str, Any]:
@@ -407,7 +379,7 @@ class BedrockAgent:
         return {
             "success": True,
             "message": f"Database {action.target} restarted",
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _generate_report(self, action: Action) -> Dict[str, Any]:
@@ -418,11 +390,9 @@ class BedrockAgent:
         )
         return {
             "success": True,
-            "message": (
-                f"Report generated for incident {action.incident_id}"
-            ),
+            "message": (f"Report generated for incident {action.incident_id}"),
             "report_url": report_url,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _optimize_cost(self, action: Action) -> Dict[str, Any]:
@@ -430,10 +400,8 @@ class BedrockAgent:
         return {
             "success": True,
             "message": f"Cost optimization applied to {action.target}",
-            "estimated_savings": action.parameters.get(
-                "estimated_savings", 0
-            ),
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "estimated_savings": action.parameters.get("estimated_savings", 0),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _notify_team(self, action: Action) -> Dict[str, Any]:
@@ -442,26 +410,22 @@ class BedrockAgent:
             "success": True,
             "message": f"Team notified about {action.target}",
             "channels": action.parameters.get("channels", []),
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _escalate_incident(self, action: Action) -> Dict[str, Any]:
         """Escalate incident to human operators."""
         self.logger.log_escalation(
             incident_id=action.incident_id,
-            reason=action.parameters.get(
-                "reason", "Agent unable to resolve"
-            ),
-            target="human_operators"
+            reason=action.parameters.get("reason", "Agent unable to resolve"),
+            target="human_operators",
         )
 
         return {
             "success": True,
             "message": f"Incident {action.incident_id} escalated",
-            "reason": action.parameters.get(
-                "reason", "Agent unable to resolve"
-            ),
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "reason": action.parameters.get("reason", "Agent unable to resolve"),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _get_historical_data(self, service: str) -> Dict[str, Any]:
@@ -471,7 +435,7 @@ class BedrockAgent:
             "recent_incidents": [],
             "successful_actions": [],
             "failed_actions": [],
-            "patterns": {}
+            "patterns": {},
         }
 
     def _get_current_metrics(self, service: str) -> Dict[str, Any]:
@@ -482,7 +446,7 @@ class BedrockAgent:
             "memory_utilization": 0.0,
             "request_count": 0,
             "error_rate": 0.0,
-            "response_time": 0.0
+            "response_time": 0.0,
         }
 
     def _get_system_constraints(self) -> Dict[str, Any]:
@@ -491,7 +455,7 @@ class BedrockAgent:
             "max_capacity": self.config.autoscaling.max_capacity,
             "min_capacity": self.config.autoscaling.min_capacity,
             "cost_limit": self.config.thresholds.cost_threshold,
-            "maintenance_window": "02:00-04:00 UTC"
+            "maintenance_window": "02:00-04:00 UTC",
         }
 
     def process_incident(self, incident: Incident) -> Dict[str, Any]:
@@ -500,7 +464,7 @@ class BedrockAgent:
             incident_id=incident.id,
             severity=incident.severity.value,
             description=incident.description,
-            metrics=incident.metrics
+            metrics=incident.metrics,
         )
 
         # Analyze the incident
@@ -517,9 +481,9 @@ class BedrockAgent:
                     "reason": analysis.get(
                         "escalation_reason", "Agent analysis failed"
                     ),
-                    "confidence": analysis.get("confidence", 0.0)
+                    "confidence": analysis.get("confidence", 0.0),
                 },
-                confidence=analysis.get("confidence", 0.0)
+                confidence=analysis.get("confidence", 0.0),
             )
 
             result = self.execute_action(escalation_action)
@@ -527,15 +491,14 @@ class BedrockAgent:
                 "incident_id": incident.id,
                 "action_taken": "escalate",
                 "result": result,
-                "analysis": analysis
+                "analysis": analysis,
             }
 
         # Check confidence threshold
         confidence_threshold = self.config.agent.confidence_threshold
         if analysis.get("confidence", 0.0) < confidence_threshold:
             self.logger.warning(
-                f"Low confidence analysis for incident {incident.id}, "
-                f"escalating"
+                f"Low confidence analysis for incident {incident.id}, " f"escalating"
             )
             return self.process_incident(incident)  # This will escalate
 
@@ -546,7 +509,7 @@ class BedrockAgent:
             action_type=ActionType(analysis.get("action", "escalate")),
             target=incident.service,
             parameters=analysis.get("parameters", {}),
-            confidence=analysis.get("confidence", 0.0)
+            confidence=analysis.get("confidence", 0.0),
         )
 
         result = self.execute_action(action)
@@ -558,5 +521,5 @@ class BedrockAgent:
             "incident_id": incident.id,
             "action_taken": action.action_type.value,
             "result": result,
-            "analysis": analysis
+            "analysis": analysis,
         }
