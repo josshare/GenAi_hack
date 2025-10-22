@@ -552,7 +552,7 @@ class ActionExecutor:
         channels = action.parameters.get("channels", [])
         message = action.parameters.get(
             "message",
-            "Automated notification from DevOps AI Agent",
+            "Automated notification from DevOps AI",
         )
 
         # This would integrate with Slack, Teams, etc.
