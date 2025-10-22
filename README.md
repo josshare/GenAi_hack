@@ -59,6 +59,12 @@ An autonomous AI agent that monitors, detects, diagnoses, and responds to incide
    - Application packaging uses uv
    - Infrastructure managed by CloudFormation templates in `infrastructure/`
 
+5. **GitHub Actions OIDC Configuration**:
+   The GitHub Actions workflow uses OpenID Connect (OIDC) to securely authenticate with AWS. This requires the following setup in your AWS account and GitHub repository:
+   - **IAM OIDC Provider**: If you don't already have one, create an IAM OIDC provider in your AWS account for GitHub Actions.
+   - **IAM Role**: Create an IAM role that the GitHub Actions workflow can assume. This role should have the necessary permissions to deploy the CloudFormation stack and manage the associated resources. The role's trust policy must allow the GitHub Actions service principal (`sts.amazonaws.com`) to assume the role.
+   - **GitHub Secret**: Create a new secret in your GitHub repository named `AWS_ROLE_TO_ASSUME` and set its value to the ARN of the IAM role you created.
+
 ## Use Cases
 
 ### 1. Intelligent Autoscaling
