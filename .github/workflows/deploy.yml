@@ -54,7 +54,7 @@ jobs:
 
       - name: Validate config
         run: |
-          python3 scripts/validate-config.py config/config.example.yaml --verbose || true
+          python3 scripts/validate-config.py config/config.example.yaml --verbose
 
       - name: Deploy infrastructure (CloudFormation)
         run: |
