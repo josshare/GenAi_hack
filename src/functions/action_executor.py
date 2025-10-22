@@ -4,6 +4,7 @@ import json
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict
+
 import boto3
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.utilities.typing import LambdaContext
@@ -11,7 +12,6 @@ from aws_lambda_powertools.utilities.typing import LambdaContext
 from ..agents.bedrock_agent import Action, ActionType
 from ..utils.config import get_config
 from ..utils.logger import get_lambda_logger
-
 
 # Initialize AWS Lambda Powertools
 logger = Logger(service="action-executor")
@@ -134,7 +134,7 @@ class ActionExecutor:
             )
 
             return {
-                "message": (f"ECS service {service_name} restart initiated"),
+                "message": f"ECS service {service_name} restart initiated",
                 "cluster": cluster_name,
                 "service": service_name,
             }
@@ -186,7 +186,7 @@ class ActionExecutor:
             )
 
             return {
-                "message": (f"Lambda function {function_name} restart initiated"),
+                "message": f"Lambda function {function_name} restart initiated",
                 "function_name": function_name,
             }
 
@@ -257,7 +257,7 @@ class ActionExecutor:
             )
 
             return {
-                "message": (f"ECS service {service_name} scaled to {target_capacity}"),
+                "message": f"ECS service {service_name} scaled to {target_capacity}",
                 "cluster": cluster_name,
                 "service": service_name,
                 "desired_count": target_capacity,
@@ -418,7 +418,7 @@ class ActionExecutor:
             )
 
             return {
-                "message": (f"ElastiCache cluster {cache_cluster_id} cache cleared"),
+                "message": f"ElastiCache cluster {cache_cluster_id} cache cleared",
                 "cache_cluster_id": cache_cluster_id,
             }
 
@@ -481,7 +481,7 @@ class ActionExecutor:
             )
 
             return {
-                "message": (f"RDS instance {db_identifier} restart initiated"),
+                "message": f"RDS instance {db_identifier} restart initiated",
                 "db_identifier": db_identifier,
                 "status": response["DBInstance"]["DBInstanceStatus"],
             }
@@ -505,7 +505,7 @@ class ActionExecutor:
             "incident_id": incident_id,
             "report_type": report_type,
             "report_url": (
-                f"s3://{config.s3.artifacts_bucket}/reports/{incident_id}.pdf"
+                f"s3://{config.s3.artifacts_bucket}/reports/" f"{incident_id}.pdf"
             ),
         }
 
@@ -548,7 +548,7 @@ class ActionExecutor:
 
         # This would integrate with paging systems like PagerDuty
         return {
-            "message": (f"Incident {incident_id} escalated to " f"{escalation_target}"),
+            "message": (f"Incident {incident_id} escalated to {escalation_target}"),
             "incident_id": incident_id,
             "reason": reason,
             "escalation_target": escalation_target,

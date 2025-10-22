@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
+
 import boto3
 from botocore.exceptions import ClientError
 from pydantic import BaseModel, Field
@@ -233,8 +234,8 @@ class BedrockAgent:
         4. Available resources and constraints
         5. Potential risks of each action
 
-        Provide your analysis and recommendation in the specified JSON
-        format.
+        Provide your analysis and recommendation in the specified
+        JSON format.
         """
 
         messages = [{"role": "user", "content": f"{self.instructions}\n\n{prompt}"}]
@@ -269,8 +270,8 @@ class BedrockAgent:
     def execute_action(self, action: Action) -> Dict[str, Any]:
         """Execute an action based on the agent's decision."""
         self.logger.info(
-            f"Executing action {action.action_type.value} for "
-            f"incident {action.incident_id}"
+            f"Executing action {action.action_type.value} for incident "
+            f"{action.incident_id}"
         )
 
         try:
@@ -390,7 +391,7 @@ class BedrockAgent:
         )
         return {
             "success": True,
-            "message": (f"Report generated for incident {action.incident_id}"),
+            "message": f"Report generated for incident {action.incident_id}",
             "report_url": report_url,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
